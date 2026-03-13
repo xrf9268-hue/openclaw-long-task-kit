@@ -64,7 +64,13 @@ def get_cmd() -> None:
     config = LtkConfig.from_env()
     pointer_path: Path = config.pointer_path
 
-    if not pointer_path.exists():
+    try:
+        exists = pointer_path.exists()
+    except OSError as exc:
+        click.echo(f"ERROR: could not inspect pointer file: {exc}", err=True)
+        sys.exit(1)
+
+    if not exists:
         click.echo(f"NOT_SET: no active task pointer at {pointer_path}", err=True)
         sys.exit(1)
 

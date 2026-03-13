@@ -1,0 +1,14 @@
+[Unit]
+Description=OpenClaw Gateway for ltk runtime automation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env openclaw gateway
+Restart=always
+RestartSec=5
+WorkingDirectory=%h/.openclaw/workspace
+
+[Install]
+WantedBy=default.target

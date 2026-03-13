@@ -39,6 +39,7 @@ from openclaw_ltk.generators.workspace_bootstrap import (
     inject_agents_directive,
     inject_boot_entry,
 )
+from openclaw_ltk.memory import append_daily_memory_note
 from openclaw_ltk.schema import ValidationResult, validate_state
 from openclaw_ltk.state import StateFile, atomic_write_text
 
@@ -370,6 +371,11 @@ def init_cmd(
             config_hints={"timeout_seconds": config.timeout_seconds},
         )
         _write_active_pointer(config.pointer_path, task_id, state_path)
+        append_daily_memory_note(
+            config,
+            current_time,
+            f"Task initialised: {title} ({task_id})",
+        )
     except OSError as exc:
         click.echo(f"ERROR: Failed to update bootstrap files: {exc}")
         sys.exit(2)

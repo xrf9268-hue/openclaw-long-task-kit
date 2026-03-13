@@ -85,6 +85,21 @@ class TestInitSkipCron:
         assert pointer_data["state_path"] == str(state_path)
         assert pointer_data["task_id"] == state_path.stem
 
+    def test_init_creates_memory_files(self, tmp_path: Path) -> None:
+        runner = CliRunner()
+        result = _run_init(runner, tmp_path)
+        assert result.exit_code == 0
+
+        memory_index = tmp_path / "MEMORY.md"
+        daily_files = list((tmp_path / "memory").glob("*.md"))
+
+        assert memory_index.exists()
+        assert len(daily_files) == 1
+        assert "memory/" in memory_index.read_text(encoding="utf-8")
+        daily_text = daily_files[0].read_text(encoding="utf-8")
+        assert "Task initialised" in daily_text
+        assert "Test Task" in daily_text
+
 
 class TestBuildStateData:
     def test_required_fields_present(self) -> None:

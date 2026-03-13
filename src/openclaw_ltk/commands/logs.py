@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import click
 
+from openclaw_ltk.clock import now_utc_iso
+from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.errors import OpenClawError
+from openclaw_ltk.logging import write_diagnostic_event
 from openclaw_ltk.openclaw_cli import OpenClawClient
 
 
@@ -20,6 +23,19 @@ def logs_cmd(
     local_time: bool,
 ) -> None:
     """Tail OpenClaw gateway logs."""
+    config = LtkConfig.from_env()
+    write_diagnostic_event(
+        config.diagnostics_log_path,
+        {
+            "ts": now_utc_iso(),
+            "event": "logs_wrapper_invoked",
+            "command": "logs",
+            "follow": follow,
+            "json_output": json_output,
+            "limit": limit,
+            "local_time": local_time,
+        },
+    )
     client = OpenClawClient()
     try:
         client.logs(
@@ -29,6 +45,20 @@ def logs_cmd(
             local_time=local_time,
         )
     except OpenClawError as exc:
+        write_diagnostic_event(
+            config.diagnostics_log_path,
+            {
+                "ts": now_utc_iso(),
+                "event": "logs_wrapper_failed",
+                "command": "logs",
+                "follow": follow,
+                "json_output": json_output,
+                "limit": limit,
+                "local_time": local_time,
+                "error": exc.message,
+                "detail": exc.detail,
+            },
+        )
         click.echo(f"ERROR: {exc.message}", err=True)
         if exc.detail:
             click.echo(exc.detail, err=True)

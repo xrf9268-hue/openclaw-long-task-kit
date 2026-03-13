@@ -104,3 +104,112 @@ class TestResumeCmd:
 
         assert result.exit_code == 1
         assert "Preflight failed" in result.output
+
+    def test_resume_appends_daily_memory_note(
+        self,
+        tmp_path: Path,
+        sample_state_data: dict[str, Any],
+    ) -> None:
+        sample_state_data["control_plane"] = {"cron_jobs": []}
+        state_path = _write_state(tmp_path, sample_state_data)
+
+        config = LtkConfig(
+            workspace=tmp_path,
+            openclaw_state_dir=tmp_path / "host-state",
+        )
+        inject_heartbeat_entry(
+            config.heartbeat_path,
+            sample_state_data["task_id"],
+            sample_state_data["title"],
+            sample_state_data["status"],
+            sample_state_data["goal"],
+            sample_state_data["updated_at"],
+        )
+        config.pointer_path.parent.mkdir(parents=True, exist_ok=True)
+        config.pointer_path.write_text("{}", encoding="utf-8")
+        config.exec_approvals_path.parent.mkdir(parents=True, exist_ok=True)
+        config.exec_approvals_path.write_text("{}", encoding="utf-8")
+
+        mock_cron = MagicMock()
+        mock_cron.list_jobs.return_value = []
+        mock_openclaw = MagicMock()
+        mock_openclaw.health.return_value = {"ok": True}
+
+        runner = CliRunner()
+        with (
+            patch("openclaw_ltk.commands.resume.CronClient", return_value=mock_cron),
+            patch(
+                "openclaw_ltk.commands.resume.OpenClawClient",
+                return_value=mock_openclaw,
+            ),
+        ):
+            result = runner.invoke(
+                main,
+                ["resume", "--state", str(state_path)],
+                env={
+                    "LTK_WORKSPACE": str(tmp_path),
+                    "OPENCLAW_STATE_DIR": str(config.openclaw_state_dir),
+                },
+            )
+
+        assert result.exit_code == 0
+        memory_index = tmp_path / "MEMORY.md"
+        daily_files = list((tmp_path / "memory").glob("*.md"))
+
+        assert memory_index.exists()
+        assert len(daily_files) == 1
+        daily_text = daily_files[0].read_text(encoding="utf-8")
+        assert "resume" in daily_text.lower()
+        assert sample_state_data["task_id"] in daily_text
+
+    def test_resume_stops_when_task_should_not_continue(
+        self,
+        tmp_path: Path,
+        sample_state_data: dict[str, Any],
+    ) -> None:
+        sample_state_data["control_plane"] = {"cron_jobs": []}
+        sample_state_data["status"] = "paused"
+        state_path = _write_state(tmp_path, sample_state_data)
+
+        config = LtkConfig(
+            workspace=tmp_path,
+            openclaw_state_dir=tmp_path / "host-state",
+        )
+        inject_heartbeat_entry(
+            config.heartbeat_path,
+            sample_state_data["task_id"],
+            sample_state_data["title"],
+            sample_state_data["status"],
+            sample_state_data["goal"],
+            sample_state_data["updated_at"],
+        )
+        config.pointer_path.parent.mkdir(parents=True, exist_ok=True)
+        config.pointer_path.write_text("{}", encoding="utf-8")
+        config.exec_approvals_path.parent.mkdir(parents=True, exist_ok=True)
+        config.exec_approvals_path.write_text("{}", encoding="utf-8")
+
+        mock_cron = MagicMock()
+        mock_cron.list_jobs.return_value = []
+        mock_openclaw = MagicMock()
+        mock_openclaw.health.return_value = {"ok": True}
+
+        runner = CliRunner()
+        with (
+            patch("openclaw_ltk.commands.resume.CronClient", return_value=mock_cron),
+            patch(
+                "openclaw_ltk.commands.resume.OpenClawClient",
+                return_value=mock_openclaw,
+            ),
+        ):
+            result = runner.invoke(
+                main,
+                ["resume", "--state", str(state_path)],
+                env={
+                    "LTK_WORKSPACE": str(tmp_path),
+                    "OPENCLAW_STATE_DIR": str(config.openclaw_state_dir),
+                },
+            )
+
+        assert result.exit_code == 1
+        assert "[TASK RESUME]" not in result.output
+        assert "Task is paused" in result.output

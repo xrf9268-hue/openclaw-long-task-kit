@@ -52,11 +52,23 @@ class LtkConfig:
     # Path to the active-task pointer JSON file.
     pointer_path: Path = dataclasses.field(default=Path())
 
+    # Workspace-level memory index file.
+    memory_index_path: Path = dataclasses.field(default=Path())
+
+    # Directory containing daily memory markdown files.
+    memory_dir: Path = dataclasses.field(default=Path())
+
     # Root OpenClaw state directory on the host machine.
     openclaw_state_dir: Path = dataclasses.field(default=Path())
 
     # Host-level exec approvals file managed by OpenClaw.
     exec_approvals_path: Path = dataclasses.field(default=Path())
+
+    # Host-level OpenClaw config JSON used for heartbeat/runtime settings.
+    openclaw_config_path: Path = dataclasses.field(default=Path())
+
+    # Structured local diagnostics JSONL file for wrapper activity and failures.
+    diagnostics_log_path: Path = dataclasses.field(default=Path())
 
     # IANA timezone name used for timestamps.
     timezone: str = "Asia/Shanghai"
@@ -99,6 +111,8 @@ class LtkConfig:
             "boot_path": ws / "BOOT.md",
             "agents_path": ws / "AGENTS.md",
             "pointer_path": ws / "tasks" / ".active-task-pointer.json",
+            "memory_index_path": ws / "MEMORY.md",
+            "memory_dir": ws / "memory",
         }
 
         for field_name, default in derived.items():
@@ -118,6 +132,16 @@ class LtkConfig:
             approvals_path = openclaw_root / "exec-approvals.json"
         object.__setattr__(self, "exec_approvals_path", approvals_path)
 
+        openclaw_config_path = _as_path(self.openclaw_config_path)
+        if openclaw_config_path == _sentinel:
+            openclaw_config_path = openclaw_root / "openclaw.json"
+        object.__setattr__(self, "openclaw_config_path", openclaw_config_path)
+
+        diagnostics_path = _as_path(self.diagnostics_log_path)
+        if diagnostics_path == _sentinel:
+            diagnostics_path = openclaw_root / "ltk-diagnostics.jsonl"
+        object.__setattr__(self, "diagnostics_log_path", diagnostics_path)
+
     # ------------------------------------------------------------------
     # Factory
     # ------------------------------------------------------------------
@@ -136,6 +160,8 @@ class LtkConfig:
             LTK_BOOT_PATH            — BOOT.md location
             LTK_AGENTS_PATH          — AGENTS.md location
             LTK_EXEC_APPROVALS_PATH  — exec-approvals.json location
+            LTK_OPENCLAW_CONFIG_PATH — host-level OpenClaw config JSON location
+            LTK_DIAGNOSTICS_LOG_PATH — local diagnostics JSONL location
 
         Scalar overrides:
             LTK_TIMEZONE                    — IANA timezone name
@@ -181,6 +207,8 @@ class LtkConfig:
             if _env("OPENCLAW_STATE_DIR")
             else Path(),
             exec_approvals_path=_opt_path("LTK_EXEC_APPROVALS_PATH"),
+            openclaw_config_path=_opt_path("LTK_OPENCLAW_CONFIG_PATH"),
+            diagnostics_log_path=_opt_path("LTK_DIAGNOSTICS_LOG_PATH"),
             timezone=_env("LTK_TIMEZONE") or "Asia/Shanghai",
             telegram_chat_id=_env("LTK_TELEGRAM_CHAT_ID") or "",
             timeout_seconds=_opt_int("LTK_TIMEOUT_SECONDS", 1800),

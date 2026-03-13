@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from openclaw_ltk.clock import now_iso
+from openclaw_ltk.clock import now, now_iso
 from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.cron import CronClient
 from openclaw_ltk.errors import LtkError
@@ -16,12 +16,17 @@ from openclaw_ltk.generators.workspace_bootstrap import (
     inject_agents_directive,
     inject_boot_entry,
 )
+from openclaw_ltk.memory import append_daily_memory_note
 from openclaw_ltk.openclaw_cli import OpenClawClient
 from openclaw_ltk.policies.continuation import (
     build_continuation_prompt,
+    format_continuation_summary,
     should_continue,
 )
-from openclaw_ltk.policies.exhaustion import evaluate_exhaustion
+from openclaw_ltk.policies.exhaustion import (
+    evaluate_exhaustion,
+    format_exhaustion_summary,
+)
 from openclaw_ltk.state import StateFile, atomic_write_text
 
 from .preflight import print_preflight_results, run_preflight_checks
@@ -95,14 +100,22 @@ def resume_cmd(state_path: str) -> None:
         config_hints={"timeout_seconds": config.timeout_seconds},
     )
     _write_active_pointer(config.pointer_path, task_id, resolved_state_path)
+    append_daily_memory_note(
+        config,
+        now(config.timezone),
+        f"Resume checkpoint for {task_id} from {resolved_state_path}",
+    )
 
     decision = should_continue(state)
     exhaustion = evaluate_exhaustion(state)
 
-    click.echo(build_continuation_prompt(state))
     if not decision.should_continue:
-        click.echo(f"\nResume note: {decision.reason}")
+        click.echo(format_continuation_summary(decision))
+        if exhaustion.action != "continue":
+            click.echo(format_exhaustion_summary(exhaustion))
+        raise SystemExit(1)
+
+    click.echo(build_continuation_prompt(state))
+    click.echo(f"\n{format_continuation_summary(decision)}")
     if exhaustion.action != "continue":
-        click.echo(
-            f"\nExhaustion: action={exhaustion.action} | reason={exhaustion.reason}"
-        )
+        click.echo(f"\n{format_exhaustion_summary(exhaustion)}")

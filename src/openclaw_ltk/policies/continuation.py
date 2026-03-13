@@ -123,3 +123,9 @@ def build_continuation_prompt(state: dict[str, Any]) -> str:
         f"\n"
         f"Pick up where the task left off. Focus on the current work package above."
     )
+
+
+def format_continuation_summary(decision: ContinuationDecision) -> str:
+    """Return a human-readable summary of the continuation decision."""
+    action = "continue" if decision.should_continue else "stop"
+    return f"Continuation: action={action} | reason={decision.reason}"

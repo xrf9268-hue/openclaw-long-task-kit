@@ -9,7 +9,15 @@ import click
 from openclaw_ltk.clock import minutes_since
 from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.errors import LtkError
+from openclaw_ltk.policies.continuation import (
+    format_continuation_summary,
+    should_continue,
+)
 from openclaw_ltk.policies.deadman import check_deadman
+from openclaw_ltk.policies.exhaustion import (
+    evaluate_exhaustion,
+    format_exhaustion_summary,
+)
 from openclaw_ltk.schema import validate_state
 from openclaw_ltk.state import StateFile
 
@@ -59,6 +67,8 @@ def status_cmd(state_path: str, brief: bool) -> None:
         silence_budget_minutes=config.silence_budget_minutes,
         dead_threshold_minutes=config.dead_threshold_minutes,
     )
+    continuation = should_continue(data)
+    exhaustion = evaluate_exhaustion(data)
     validation = validate_state(data)
     val_label = "valid" if validation.valid else "INVALID"
 
@@ -69,6 +79,8 @@ def status_cmd(state_path: str, brief: bool) -> None:
     click.echo(f"Work Package: {cwp_id} - {cwp_goal}")
     click.echo(f"Updated: {updated_at} ({mins_ago}m ago)")
     click.echo(f"Deadman: {deadman.status} — {deadman.message}")
+    click.echo(format_continuation_summary(continuation))
+    click.echo(format_exhaustion_summary(exhaustion))
     n_err = len(validation.errors)
     n_warn = len(validation.warnings)
     click.echo(f"Validation: {val_label} ({n_err} errors, {n_warn} warnings)")
