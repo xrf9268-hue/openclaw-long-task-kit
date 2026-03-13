@@ -19,9 +19,7 @@ def _write_state(tmp_path: Path, data: dict[str, Any]) -> Path:
     state_dir = tmp_path / "tasks" / "state"
     state_dir.mkdir(parents=True, exist_ok=True)
     state_file = state_dir / "test-task.json"
-    state_file.write_text(
-        json.dumps(data, indent=2), encoding="utf-8"
-    )
+    state_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
     return state_file
 
 
@@ -61,9 +59,12 @@ class TestArmCmd:
             result = runner.invoke(
                 main,
                 [
-                    "watchdog", "arm",
-                    "--state", str(state_file),
-                    "--at", "2026-03-13T12:00:00+08:00",
+                    "watchdog",
+                    "arm",
+                    "--state",
+                    str(state_file),
+                    "--at",
+                    "2026-03-13T12:00:00+08:00",
                 ],
                 env={"LTK_WORKSPACE": str(tmp_path)},
             )
@@ -87,9 +88,12 @@ class TestArmCmd:
             result = runner.invoke(
                 main,
                 [
-                    "watchdog", "arm",
-                    "--state", str(state_file),
-                    "--at", "2026-03-13T12:00:00+08:00",
+                    "watchdog",
+                    "arm",
+                    "--state",
+                    str(state_file),
+                    "--at",
+                    "2026-03-13T12:00:00+08:00",
                 ],
                 env={"LTK_WORKSPACE": str(tmp_path)},
             )
@@ -177,9 +181,12 @@ class TestRenewCmd:
             result = runner.invoke(
                 main,
                 [
-                    "watchdog", "renew",
-                    "--state", str(state_file),
-                    "--at", "2026-03-13T14:00:00+08:00",
+                    "watchdog",
+                    "renew",
+                    "--state",
+                    str(state_file),
+                    "--at",
+                    "2026-03-13T14:00:00+08:00",
                 ],
                 env={"LTK_WORKSPACE": str(tmp_path)},
             )
@@ -206,9 +213,12 @@ class TestRenewCmd:
             result = runner.invoke(
                 main,
                 [
-                    "watchdog", "renew",
-                    "--state", str(state_file),
-                    "--at", "2026-03-13T14:00:00+08:00",
+                    "watchdog",
+                    "renew",
+                    "--state",
+                    str(state_file),
+                    "--at",
+                    "2026-03-13T14:00:00+08:00",
                 ],
                 env={"LTK_WORKSPACE": str(tmp_path)},
             )

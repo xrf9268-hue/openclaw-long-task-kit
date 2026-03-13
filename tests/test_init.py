@@ -101,9 +101,7 @@ class TestBuildStateData:
 
 
 class TestRunInitPreflight:
-    def test_valid_data_passes(
-        self, sample_state_data: dict[str, Any]
-    ) -> None:
+    def test_valid_data_passes(self, sample_state_data: dict[str, Any]) -> None:
         """_run_init_preflight returns valid=True for valid data."""
         result = _run_init_preflight(sample_state_data)
         assert result.valid is True

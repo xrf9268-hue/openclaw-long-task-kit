@@ -84,23 +84,17 @@ class TestCheckActivePointer:
 
 
 class TestCheckChildCheckpoint:
-    def test_no_child_execution(
-        self, sample_state_data: dict[str, Any]
-    ) -> None:
+    def test_no_child_execution(self, sample_state_data: dict[str, Any]) -> None:
         ok, detail = check_child_checkpoint(sample_state_data)
         assert ok is True
         assert "skipped" in detail
 
-    def test_valid_checkpoint(
-        self, sample_state_data: dict[str, Any]
-    ) -> None:
+    def test_valid_checkpoint(self, sample_state_data: dict[str, Any]) -> None:
         sample_state_data["child_execution"] = {"checkpoint": "step-3"}
         ok, _ = check_child_checkpoint(sample_state_data)
         assert ok is True
 
-    def test_missing_checkpoint(
-        self, sample_state_data: dict[str, Any]
-    ) -> None:
+    def test_missing_checkpoint(self, sample_state_data: dict[str, Any]) -> None:
         sample_state_data["child_execution"] = {}
         ok, detail = check_child_checkpoint(sample_state_data)
         assert ok is False
@@ -108,21 +102,15 @@ class TestCheckChildCheckpoint:
 
 
 class TestCheckCronCoverage:
-    def test_no_cron_declared(
-        self, sample_state_data: dict[str, Any]
-    ) -> None:
+    def test_no_cron_declared(self, sample_state_data: dict[str, Any]) -> None:
         """No cron jobs declared passes with informational message."""
         ok, detail = check_cron_coverage(sample_state_data, MagicMock())
         assert ok is True
         assert "no cron jobs" in detail
 
-    def test_cron_present_and_enabled(
-        self, sample_state_data: dict[str, Any]
-    ) -> None:
+    def test_cron_present_and_enabled(self, sample_state_data: dict[str, Any]) -> None:
         """Declared cron jobs that exist and are enabled pass."""
-        sample_state_data["control_plane"] = {
-            "cron_jobs": [{"name": "watchdog-test"}]
-        }
+        sample_state_data["control_plane"] = {"cron_jobs": [{"name": "watchdog-test"}]}
         mock_client = MagicMock()
         mock_client.list_jobs.return_value = [
             CronJob(id="j1", name="watchdog-test", enabled=True)
@@ -130,13 +118,9 @@ class TestCheckCronCoverage:
         ok, _ = check_cron_coverage(sample_state_data, mock_client)
         assert ok is True
 
-    def test_cron_missing(
-        self, sample_state_data: dict[str, Any]
-    ) -> None:
+    def test_cron_missing(self, sample_state_data: dict[str, Any]) -> None:
         """Declared cron job not found in live jobs fails."""
-        sample_state_data["control_plane"] = {
-            "cron_jobs": [{"name": "watchdog-test"}]
-        }
+        sample_state_data["control_plane"] = {"cron_jobs": [{"name": "watchdog-test"}]}
         mock_client = MagicMock()
         mock_client.list_jobs.return_value = []
         ok, detail = check_cron_coverage(sample_state_data, mock_client)
@@ -169,8 +153,12 @@ class TestPreflightCmd:
         # Set up heartbeat and pointer for passing checks.
         config = LtkConfig(workspace=tmp_path)
         inject_heartbeat_entry(
-            config.heartbeat_path, "2026-03-13-test-task",
-            "Test", "active", "Goal", "2026-01-01",
+            config.heartbeat_path,
+            "2026-03-13-test-task",
+            "Test",
+            "active",
+            "Goal",
+            "2026-01-01",
         )
         config.pointer_path.parent.mkdir(parents=True, exist_ok=True)
         config.pointer_path.write_text('{"task_id": "t1"}')
@@ -196,9 +184,7 @@ class TestPreflightCmd:
         # If FAIL, it should only be exec-approvals.
         if result.exit_code == 1:
             lines = result.output.strip().splitlines()
-            fail_lines = [
-                ln for ln in lines if "\u2717" in ln
-            ]
+            fail_lines = [ln for ln in lines if "\u2717" in ln]
             assert all("exec-approvals" in fl for fl in fail_lines)
 
     def test_fail_with_invalid_state(self, tmp_path: Path) -> None:

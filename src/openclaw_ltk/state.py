@@ -92,9 +92,7 @@ class StateFile:
             StateFileError: on any OS-level error.
         """
         try:
-            atomic_write_text(
-                self.path, json.dumps(data, ensure_ascii=False, indent=2)
-            )
+            atomic_write_text(self.path, json.dumps(data, ensure_ascii=False, indent=2))
         except OSError as exc:
             raise StateFileError(
                 "Failed to write state file.",

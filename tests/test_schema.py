@@ -116,8 +116,7 @@ class TestTimestampValidation:
         data["created_at"] = "not-a-timestamp"
         result = validate_state(data)
         assert any(
-            "created_at" in w and "not valid ISO-8601" in w
-            for w in result.warnings
+            "created_at" in w and "not valid ISO-8601" in w for w in result.warnings
         )
 
 
