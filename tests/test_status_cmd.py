@@ -111,3 +111,17 @@ class TestFullMode:
         )
         assert result.exit_code == 0
         assert "Validation:" in result.output
+
+    def test_status_reports_exhaustion_action(self, tmp_path: Path) -> None:
+        data = _fresh_state()
+        data["retry_count"] = 3
+        state_file = _write_state(tmp_path, data)
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            ["status", "--state", str(state_file)],
+            env={"LTK_WORKSPACE": str(tmp_path)},
+        )
+
+        assert result.exit_code == 0
+        assert "Exhaustion: action=abort" in result.output

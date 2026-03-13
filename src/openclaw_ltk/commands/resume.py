@@ -20,9 +20,13 @@ from openclaw_ltk.memory import append_daily_memory_note
 from openclaw_ltk.openclaw_cli import OpenClawClient
 from openclaw_ltk.policies.continuation import (
     build_continuation_prompt,
+    format_continuation_summary,
     should_continue,
 )
-from openclaw_ltk.policies.exhaustion import evaluate_exhaustion
+from openclaw_ltk.policies.exhaustion import (
+    evaluate_exhaustion,
+    format_exhaustion_summary,
+)
 from openclaw_ltk.state import StateFile, atomic_write_text
 
 from .preflight import print_preflight_results, run_preflight_checks
@@ -105,10 +109,13 @@ def resume_cmd(state_path: str) -> None:
     decision = should_continue(state)
     exhaustion = evaluate_exhaustion(state)
 
-    click.echo(build_continuation_prompt(state))
     if not decision.should_continue:
-        click.echo(f"\nResume note: {decision.reason}")
+        click.echo(format_continuation_summary(decision))
+        if exhaustion.action != "continue":
+            click.echo(format_exhaustion_summary(exhaustion))
+        raise SystemExit(1)
+
+    click.echo(build_continuation_prompt(state))
+    click.echo(f"\n{format_continuation_summary(decision)}")
     if exhaustion.action != "continue":
-        click.echo(
-            f"\nExhaustion: action={exhaustion.action} | reason={exhaustion.reason}"
-        )
+        click.echo(f"\n{format_exhaustion_summary(exhaustion)}")

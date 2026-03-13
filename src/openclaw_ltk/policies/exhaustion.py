@@ -63,3 +63,8 @@ def evaluate_exhaustion(
         reason="No exhaustion signals detected",
         suggested_next_step="Continue normal execution",
     )
+
+
+def format_exhaustion_summary(result: ExhaustionResult) -> str:
+    """Return a human-readable summary of the exhaustion decision."""
+    return f"Exhaustion: action={result.action} | reason={result.reason}"
