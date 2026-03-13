@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://openclaw.dev/schemas/task-state-v2.schema.json",
+  "title": "OpenClaw Task State v2",
+  "description": "Schema for an openclaw long-task state file. Authoritative validation is performed by openclaw_ltk.schema (hand-written, no external deps). This file is for documentation and external tooling only.",
+  "type": "object",
+  "required": [
+    "task_id",
+    "title",
+    "created_at",
+    "updated_at",
+    "status",
+    "phase",
+    "goal",
+    "current_work_package",
+    "reporting",
+    "runtime"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Globally unique identifier for this task."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable title."
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ISO-8601 creation timestamp."
+    },
+    "updated_at": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ISO-8601 last-update timestamp."
+    },
+    "status": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Current lifecycle status (e.g. active, paused, done, failed)."
+    },
+    "phase": {
+      "type": "string",
+      "minLength": 1,
+      "description": "High-level phase label (e.g. planning, executing, review)."
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Top-level goal statement for the task."
+    },
+    "current_work_package": {
+      "type": "object",
+      "description": "The work package currently being executed.",
+      "required": ["id", "goal", "done_when"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Work package identifier."
+        },
+        "goal": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Goal of this work package."
+        },
+        "done_when": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Completion criterion for this work package."
+        }
+      }
+    },
+    "reporting": {
+      "type": "object",
+      "description": "Reporting configuration and state.",
+      "additionalProperties": true
+    },
+    "runtime": {
+      "type": "object",
+      "description": "Runtime metadata (executor info, env, etc.).",
+      "additionalProperties": true
+    },
+    "control_plane": {
+      "type": "object",
+      "description": "(Optional) Control-plane state: locks, hooks, heartbeat.",
+      "additionalProperties": true,
+      "properties": {
+        "lock": {
+          "type": "object",
+          "description": "Distributed lock metadata.",
+          "additionalProperties": true
+        },
+        "hooks": {
+          "type": "array",
+          "description": "List of registered control-plane hook identifiers.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "last_heartbeat": {
+          "type": "string",
+          "description": "ISO-8601 timestamp of the last heartbeat."
+        }
+      }
+    },
+    "control_plane_hooks": {
+      "type": "object",
+      "description": "(Optional) Hook definitions keyed by hook name.",
+      "additionalProperties": true
+    },
+    "active_task_pointer": {
+      "type": "string",
+      "description": "(Optional) Pointer to the currently active sub-task or step ID."
+    },
+    "preflight": {
+      "type": "object",
+      "description": "(Optional) Preflight check results and configuration.",
+      "additionalProperties": true
+    },
+    "child_execution": {
+      "type": "object",
+      "description": "(Optional) Child/sub-task execution tracking.",
+      "additionalProperties": true
+    }
+  }
+}

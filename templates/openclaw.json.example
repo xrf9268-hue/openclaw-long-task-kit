@@ -1,0 +1,11 @@
+{
+  "timeoutSeconds": 1800,
+  "compaction": {
+    "memoryFlush": true
+  },
+  "session": {
+    "reset": {
+      "mode": "daily"
+    }
+  }
+}

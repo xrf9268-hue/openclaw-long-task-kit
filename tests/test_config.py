@@ -1,0 +1,71 @@
+"""Tests for openclaw_ltk.config.LtkConfig."""
+
+from __future__ import annotations
+
+import dataclasses
+from pathlib import Path
+
+import pytest
+
+from openclaw_ltk.config import LtkConfig
+
+
+class TestDefaultValues:
+    def test_default_values(self) -> None:
+        """Default config constructed with a workspace should have correct defaults."""
+        cfg = LtkConfig(workspace=Path("/tmp/ws"))
+        assert cfg.workspace == Path("/tmp/ws")
+        assert cfg.timezone == "Asia/Shanghai"
+        assert cfg.telegram_chat_id == ""
+        assert cfg.timeout_seconds == 1800
+        assert cfg.silence_budget_minutes == 10
+        assert cfg.continuation_interval_minutes == 5
+        assert cfg.deadman_interval_minutes == 20
+
+
+class TestFromEnv:
+    def test_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """LTK_WORKSPACE env var is picked up by from_env()."""
+        monkeypatch.setenv("LTK_WORKSPACE", "/custom/workspace")
+        # Clear any fallback that might interfere
+        monkeypatch.delenv("OPENCLAW_WORKSPACE", raising=False)
+        cfg = LtkConfig.from_env()
+        assert cfg.workspace == Path("/custom/workspace")
+
+    def test_from_env_fallback(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """OPENCLAW_WORKSPACE is used as fallback when LTK_WORKSPACE is absent."""
+        monkeypatch.delenv("LTK_WORKSPACE", raising=False)
+        monkeypatch.setenv("OPENCLAW_WORKSPACE", "/fallback/workspace")
+        cfg = LtkConfig.from_env()
+        assert cfg.workspace == Path("/fallback/workspace")
+
+
+class TestDerivedPaths:
+    def test_derived_paths(self) -> None:
+        """state_dir, heartbeat_path, etc. are derived correctly from workspace."""
+        ws = Path("/my/workspace")
+        cfg = LtkConfig(workspace=ws)
+        assert cfg.state_dir == ws / "tasks" / "state"
+        assert cfg.heartbeat_path == ws / "HEARTBEAT.md"
+        assert cfg.boot_path == ws / "BOOT.md"
+        assert cfg.pointer_path == ws / "tasks" / ".active-task-pointer.json"
+
+
+class TestPathOverride:
+    def test_path_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """LTK_STATE_DIR env var overrides the derived state_dir default."""
+        monkeypatch.setenv("LTK_WORKSPACE", "/base/ws")
+        monkeypatch.setenv("LTK_STATE_DIR", "/override/state")
+        monkeypatch.delenv("OPENCLAW_WORKSPACE", raising=False)
+        cfg = LtkConfig.from_env()
+        assert cfg.state_dir == Path("/override/state")
+        # Other derived paths still use the workspace
+        assert cfg.heartbeat_path == Path("/base/ws") / "HEARTBEAT.md"
+
+
+class TestFrozen:
+    def test_frozen(self) -> None:
+        """LtkConfig is immutable; attempting mutation raises FrozenInstanceError."""
+        cfg = LtkConfig(workspace=Path("/tmp/ws"))
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            cfg.timezone = "UTC"  # type: ignore[misc]

@@ -1,0 +1,14 @@
+{
+  "approvals": [
+    {
+      "pattern": "ltk *",
+      "allow": true,
+      "reason": "Long Task Kit commands are pre-approved for task management"
+    },
+    {
+      "pattern": "openclaw cron *",
+      "allow": true,
+      "reason": "Cron management is required for control plane operations"
+    }
+  ]
+}
