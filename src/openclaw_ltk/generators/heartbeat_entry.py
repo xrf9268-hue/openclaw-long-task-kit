@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from openclaw_ltk.state import atomic_write_text
+
 # ---------------------------------------------------------------------------
 # Entry template
 # ---------------------------------------------------------------------------
@@ -87,7 +89,7 @@ def inject_heartbeat_entry(
 
     if not heartbeat_path.exists():
         heartbeat_path.parent.mkdir(parents=True, exist_ok=True)
-        heartbeat_path.write_text(entry + "\n", encoding="utf-8")
+        atomic_write_text(heartbeat_path, entry + "\n")
         return
 
     original = heartbeat_path.read_text(encoding="utf-8")
@@ -100,7 +102,7 @@ def inject_heartbeat_entry(
         separator = "\n" if original.endswith("\n") else "\n\n"
         updated = original + separator + entry + "\n"
 
-    heartbeat_path.write_text(updated, encoding="utf-8")
+    atomic_write_text(heartbeat_path, updated)
 
 
 def remove_heartbeat_entry(heartbeat_path: Path, task_id: str) -> None:
@@ -133,4 +135,4 @@ def remove_heartbeat_entry(heartbeat_path: Path, task_id: str) -> None:
     if cleaned:
         cleaned += "\n"
 
-    heartbeat_path.write_text(cleaned, encoding="utf-8")
+    atomic_write_text(heartbeat_path, cleaned)

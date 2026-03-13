@@ -21,6 +21,24 @@ from openclaw_ltk.clock import now_utc_iso
 from openclaw_ltk.errors import StateFileError
 
 
+def atomic_write_text(path: Path, content: str) -> None:
+    """Write *content* to *path* atomically via tmp file + os.rename.
+
+    On failure the temporary file is cleaned up and the original
+    ``OSError`` is re-raised (never wrapped in ``StateFileError``).
+    """
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    try:
+        tmp_path.write_text(content, encoding="utf-8")
+        os.rename(tmp_path, path)
+    except OSError:
+        import contextlib
+
+        with contextlib.suppress(OSError):
+            tmp_path.unlink(missing_ok=True)
+        raise
+
+
 class StateFile:
     """Manages read/write access to a single JSON state file."""
 
@@ -73,19 +91,11 @@ class StateFile:
         Raises:
             StateFileError: on any OS-level error.
         """
-        tmp_path = self.path.with_suffix(self.path.suffix + ".tmp")
         try:
-            tmp_path.write_text(
-                json.dumps(data, ensure_ascii=False, indent=2),
-                encoding="utf-8",
+            atomic_write_text(
+                self.path, json.dumps(data, ensure_ascii=False, indent=2)
             )
-            os.rename(tmp_path, self.path)
         except OSError as exc:
-            # Best-effort cleanup of the temp file.
-            import contextlib
-
-            with contextlib.suppress(OSError):
-                tmp_path.unlink(missing_ok=True)
             raise StateFileError(
                 "Failed to write state file.",
                 detail=str(exc),

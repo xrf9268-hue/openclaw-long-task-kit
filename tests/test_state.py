@@ -10,7 +10,46 @@ from unittest.mock import patch
 import pytest
 
 from openclaw_ltk.errors import StateFileError
-from openclaw_ltk.state import StateFile
+from openclaw_ltk.state import StateFile, atomic_write_text
+
+
+class TestAtomicWriteText:
+    def test_writes_content(self, tmp_state_dir: Path) -> None:
+        """atomic_write_text creates the file with exact content."""
+        target = tmp_state_dir / "out.txt"
+        atomic_write_text(target, "hello world")
+        assert target.read_text(encoding="utf-8") == "hello world"
+
+    def test_no_leftover_tmp_on_success(self, tmp_state_dir: Path) -> None:
+        """Temp file is removed after a successful write."""
+        target = tmp_state_dir / "out.txt"
+        atomic_write_text(target, "data")
+        tmp_file = target.with_suffix(target.suffix + ".tmp")
+        assert not tmp_file.exists()
+
+    def test_cleans_up_tmp_on_failure(self, tmp_state_dir: Path) -> None:
+        """On write failure, the temp file is cleaned up and OSError is raised."""
+        target = tmp_state_dir / "out.txt"
+
+        def failing_rename(src: Any, dst: Any) -> None:
+            raise OSError("simulated rename failure")
+
+        with (
+            patch("openclaw_ltk.state.os.rename", side_effect=failing_rename),
+            pytest.raises(OSError, match="simulated rename failure"),
+        ):
+            atomic_write_text(target, "data")
+
+        # Temp file should have been cleaned up.
+        tmp_file = target.with_suffix(target.suffix + ".tmp")
+        assert not tmp_file.exists()
+
+    def test_overwrites_existing_file(self, tmp_state_dir: Path) -> None:
+        """atomic_write_text overwrites an existing file atomically."""
+        target = tmp_state_dir / "out.txt"
+        target.write_text("old content", encoding="utf-8")
+        atomic_write_text(target, "new content")
+        assert target.read_text(encoding="utf-8") == "new content"
 
 
 class TestSaveAndLoad:

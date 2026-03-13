@@ -10,6 +10,7 @@ import click
 
 from openclaw_ltk.clock import now_utc_iso
 from openclaw_ltk.config import LtkConfig
+from openclaw_ltk.state import atomic_write_text
 
 
 @click.group("pointer")
@@ -40,9 +41,9 @@ def set_cmd(task_id: str, state_path: str) -> None:
 
     try:
         pointer_path.parent.mkdir(parents=True, exist_ok=True)
-        pointer_path.write_text(
+        atomic_write_text(
+            pointer_path,
             json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
         )
     except OSError as exc:
         click.echo(f"ERROR: could not write pointer file: {exc}", err=True)

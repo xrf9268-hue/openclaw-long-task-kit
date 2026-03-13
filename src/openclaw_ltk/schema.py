@@ -7,6 +7,7 @@ schemas/task-state-v2.schema.json exists for documentation and external tooling.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 
@@ -33,6 +34,30 @@ def nested_get(data: dict[str, Any], path: str) -> Any:
             return None
         current = current.get(part)
     return current
+
+
+_VALID_STATUSES: frozenset[str] = frozenset(
+    {
+        "launching",
+        "active",
+        "paused",
+        "blocked",
+        "exhausted",
+        "done",
+        "closed",
+        "failed",
+        "cancelled",
+    }
+)
+
+
+def _is_iso8601(value: str) -> bool:
+    """Return True if *value* parses as an ISO-8601 datetime."""
+    try:
+        datetime.fromisoformat(value)
+    except (ValueError, TypeError):
+        return False
+    return True
 
 
 def _is_nonempty(value: Any) -> bool:
@@ -105,6 +130,10 @@ def validate_required_fields(data: dict[str, Any]) -> list[str]:
         for key in _CWP_REQUIRED_KEYS:
             if not _is_nonempty(cwp.get(key)):
                 errors.append(f"current_work_package.{key}")
+        # blockers, when present, must be a list.
+        blockers = cwp.get("blockers")
+        if blockers is not None and not isinstance(blockers, list):
+            errors.append("current_work_package.blockers must be a list")
 
     return errors
 
@@ -162,6 +191,20 @@ def validate_state(data: dict[str, Any]) -> ValidationResult:
         errors.append(f"control_plane validation error: {issue}")
 
     # --- Soft warnings ---
+    # Status whitelist check.
+    status = data.get("status")
+    if isinstance(status, str) and status not in _VALID_STATUSES:
+        warnings.append(
+            f"Unrecognised status '{status}'; "
+            f"expected one of: {', '.join(sorted(_VALID_STATUSES))}"
+        )
+
+    # Timestamp format checks.
+    for ts_field in ("created_at", "updated_at"):
+        ts_val = data.get(ts_field)
+        if isinstance(ts_val, str) and ts_val and not _is_iso8601(ts_val):
+            warnings.append(f"'{ts_field}' is not valid ISO-8601: {ts_val!r}")
+
     for field_name in _OPTIONAL_FIELDS:
         if data.get(field_name) is None:
             warnings.append(f"Optional field not present: '{field_name}'")

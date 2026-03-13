@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 
 from openclaw_ltk.clock import minutes_since
+from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.errors import LtkError
 from openclaw_ltk.policies.deadman import check_deadman
 from openclaw_ltk.schema import validate_state
@@ -52,7 +53,12 @@ def status_cmd(state_path: str, brief: bool) -> None:
     cwp_id = cwp.get("id", "-")
     cwp_goal = cwp.get("goal", "-")
 
-    deadman = check_deadman(data)
+    config = LtkConfig.from_env()
+    deadman = check_deadman(
+        data,
+        silence_budget_minutes=config.silence_budget_minutes,
+        dead_threshold_minutes=config.dead_threshold_minutes,
+    )
     validation = validate_state(data)
     val_label = "valid" if validation.valid else "INVALID"
 

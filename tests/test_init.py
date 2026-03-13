@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from click.testing import CliRunner
 
 from openclaw_ltk.cli import main
+from openclaw_ltk.commands.init import _build_state_data, _run_init_preflight
 
 
 def _run_init(
@@ -60,6 +62,57 @@ class TestInitSkipCron:
         assert "goal" in data
         assert data["status"] == "launching"
         assert "control_plane" in data
+
+
+class TestBuildStateData:
+    def test_required_fields_present(self) -> None:
+        """_build_state_data returns a dict with all required fields."""
+        data = _build_state_data(
+            task_id="2026-03-13-test",
+            title="Test",
+            goal="Goal",
+            first_wp_goal="WP Goal",
+            first_wp_done_when="done",
+            task_type="research",
+            now_str="2026-03-13T00:00:00+08:00",
+            next_report_due_str="2026-03-13T00:10:00+08:00",
+            silence_budget_minutes=10,
+        )
+        assert data["task_id"] == "2026-03-13-test"
+        assert data["status"] == "launching"
+        assert data["current_work_package"]["id"] == "WP-1"
+        assert data["current_work_package"]["blockers"] == []
+        assert "control_plane" in data
+
+    def test_task_type_in_notes(self) -> None:
+        """task_type should appear in the notes list."""
+        data = _build_state_data(
+            task_id="t",
+            title="T",
+            goal="G",
+            first_wp_goal="W",
+            first_wp_done_when="D",
+            task_type="coding",
+            now_str="2026-01-01T00:00:00",
+            next_report_due_str="2026-01-01T00:10:00",
+            silence_budget_minutes=10,
+        )
+        assert "task_type=coding" in data["notes"]
+
+
+class TestRunInitPreflight:
+    def test_valid_data_passes(
+        self, sample_state_data: dict[str, Any]
+    ) -> None:
+        """_run_init_preflight returns valid=True for valid data."""
+        result = _run_init_preflight(sample_state_data)
+        assert result.valid is True
+
+    def test_invalid_data_fails(self) -> None:
+        """_run_init_preflight returns valid=False for empty data."""
+        result = _run_init_preflight({})
+        assert result.valid is False
+        assert len(result.errors) > 0
 
 
 class TestInitPreventOverwrite:

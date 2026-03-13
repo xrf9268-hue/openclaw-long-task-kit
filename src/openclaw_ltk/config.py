@@ -67,6 +67,9 @@ class LtkConfig:
     # How often (minutes) the deadman-switch cron job runs.
     deadman_interval_minutes: int = 20
 
+    # Minutes without update before a task is considered dead.
+    dead_threshold_minutes: int = 30
+
     def __post_init__(self) -> None:
         """Coerce string inputs to Path and backfill derived path defaults."""
 
@@ -137,6 +140,12 @@ class LtkConfig:
             try:
                 return int(raw)
             except ValueError:
+                import warnings
+
+                warnings.warn(
+                    f"Invalid integer for {var!r}: {raw!r}; using default {default}",
+                    stacklevel=3,
+                )
                 return default
 
         return cls(
@@ -151,4 +160,5 @@ class LtkConfig:
             silence_budget_minutes=_opt_int("LTK_SILENCE_BUDGET_MINUTES", 10),
             continuation_interval_minutes=_opt_int("LTK_CONTINUATION_INTERVAL", 5),
             deadman_interval_minutes=_opt_int("LTK_DEADMAN_INTERVAL", 20),
+            dead_threshold_minutes=_opt_int("LTK_DEAD_THRESHOLD_MINUTES", 30),
         )

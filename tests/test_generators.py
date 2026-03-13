@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from openclaw_ltk.generators.agents_directive import generate_agents_directive
+from openclaw_ltk.generators.boot_entry import generate_boot_entry
 from openclaw_ltk.generators.cron_matrix import (
     build_all_specs,
     build_closure_check_spec,
@@ -128,3 +130,75 @@ class TestRemoveHeartbeatEntry:
         hb = tmp_path / "HEARTBEAT.md"
         # No error on missing file.
         remove_heartbeat_entry(hb, "t1")
+
+
+# ---------------------------------------------------------------------------
+# agents_directive
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateAgentsDirective:
+    def test_contains_task_id(self) -> None:
+        result = generate_agents_directive("task-42", "/path/to/state.json")
+        assert "task-42" in result
+        assert "/path/to/state.json" in result
+
+    def test_includes_timeout_hint(self) -> None:
+        result = generate_agents_directive(
+            "task-42",
+            "/path/to/state.json",
+            config_hints={"timeout_seconds": 3600},
+        )
+        assert "3600" in result
+
+    def test_no_config_hints(self) -> None:
+        result = generate_agents_directive("task-42", "/path/to/state.json")
+        # Should not raise and should contain directive header
+        assert "Long Task Directive" in result
+
+    def test_empty_config_hints(self) -> None:
+        result = generate_agents_directive(
+            "task-42", "/path/to/state.json", config_hints={}
+        )
+        assert "Long Task Directive" in result
+
+
+# ---------------------------------------------------------------------------
+# boot_entry
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateBootEntry:
+    def test_contains_task_info(self) -> None:
+        result = generate_boot_entry(
+            task_id="task-42",
+            title="Test Task",
+            goal="Test goal",
+            state_path="/path/to/state.json",
+        )
+        assert "task-42" in result
+        assert "Test Task" in result
+        assert "Test goal" in result
+        assert "/path/to/state.json" in result
+
+    def test_default_recovery_steps(self) -> None:
+        result = generate_boot_entry(
+            task_id="t",
+            title="T",
+            goal="G",
+            state_path="/s.json",
+        )
+        assert "Load state file" in result
+        assert "Run preflight" in result
+        assert "Resume work" in result
+
+    def test_custom_recovery_steps(self) -> None:
+        result = generate_boot_entry(
+            task_id="t",
+            title="T",
+            goal="G",
+            state_path="/s.json",
+            recovery_steps=["Check logs", "Restart service"],
+        )
+        assert "4. Check logs" in result
+        assert "5. Restart service" in result

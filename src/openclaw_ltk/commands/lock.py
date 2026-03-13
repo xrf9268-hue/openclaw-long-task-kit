@@ -72,15 +72,14 @@ def acquire_cmd(state_path: str, owner: str, ttl: int) -> None:
                         if _utc_now() < expires_dt:
                             # Lock is still valid — check if same owner.
                             if existing_lock.get("owner") == owner:
-                                # Re-entrant: refresh the lock.
-                                pass
+                                pass  # Same owner — fall through to refresh below.
                             else:
                                 conflict_owner = existing_lock.get("owner", "unknown")
                                 # Abort — raise to exit ctx.
                                 raise _LockConflict(conflict_owner)
                     except _LockConflict:
                         raise
-                    except Exception:  # noqa: BLE001
+                    except (ValueError, TypeError, OverflowError):
                         # Unparseable expiry — treat as expired, allow overwrite.
                         pass
 
@@ -98,7 +97,7 @@ def acquire_cmd(state_path: str, owner: str, ttl: int) -> None:
     except StateFileError as exc:
         click.echo(f"INVALID_STATE: {exc}", err=True)
         sys.exit(11)
-    except Exception as exc:  # noqa: BLE001
+    except OSError as exc:
         click.echo(f"FATAL: {exc}", err=True)
         sys.exit(2)
 
@@ -154,7 +153,7 @@ def release_cmd(state_path: str, owner: str) -> None:
     except StateFileError as exc:
         click.echo(f"INVALID_STATE: {exc}", err=True)
         sys.exit(11)
-    except Exception as exc:  # noqa: BLE001
+    except OSError as exc:
         click.echo(f"FATAL: {exc}", err=True)
         sys.exit(2)
 

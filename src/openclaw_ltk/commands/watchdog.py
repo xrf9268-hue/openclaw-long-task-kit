@@ -9,7 +9,7 @@ import click
 
 from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.cron import CronClient
-from openclaw_ltk.errors import CronError
+from openclaw_ltk.errors import CronError, StateFileError
 from openclaw_ltk.generators.cron_matrix import build_watchdog_spec
 from openclaw_ltk.state import StateFile
 
@@ -19,7 +19,7 @@ def _get_task_id(state_path: str) -> str:
     sf = StateFile(Path(state_path))
     try:
         state = sf.load()
-    except Exception as exc:  # noqa: BLE001
+    except (StateFileError, OSError) as exc:
         click.echo(f"FATAL: could not load state file: {exc}", err=True)
         sys.exit(2)
     task_id: str = state.get("task_id", "")

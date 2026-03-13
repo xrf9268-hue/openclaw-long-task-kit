@@ -10,7 +10,7 @@ import click
 
 from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.cron import CronClient, CronJob
-from openclaw_ltk.errors import CronError
+from openclaw_ltk.errors import CronError, StateFileError
 from openclaw_ltk.generators.heartbeat_entry import remove_heartbeat_entry
 from openclaw_ltk.schema import nested_get
 from openclaw_ltk.state import StateFile
@@ -53,7 +53,7 @@ def close_cmd(state_path: str, write_back: bool) -> None:
     sf = StateFile(Path(state_path))
     try:
         state = sf.load()
-    except Exception as exc:  # noqa: BLE001
+    except (StateFileError, OSError) as exc:
         click.echo(f"FATAL: could not load state file: {exc}", err=True)
         sys.exit(2)
 
@@ -92,7 +92,7 @@ def close_cmd(state_path: str, write_back: bool) -> None:
     if task_id:
         try:
             remove_heartbeat_entry(config.heartbeat_path, task_id)
-        except Exception as exc:  # noqa: BLE001
+        except OSError as exc:
             heartbeat_ok = False
             click.echo(f"WARNING: could not remove heartbeat entry: {exc}", err=True)
 
@@ -101,7 +101,7 @@ def close_cmd(state_path: str, write_back: bool) -> None:
         try:
             with sf.locked_update() as data:
                 data["status"] = "closed"
-        except Exception as exc:  # noqa: BLE001
+        except (StateFileError, OSError) as exc:
             click.echo(f"WARNING: write-back failed: {exc}", err=True)
 
     # Step 7 — print result.

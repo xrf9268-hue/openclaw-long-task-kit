@@ -5,7 +5,11 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from openclaw_ltk.schema import nested_get, validate_state
+from openclaw_ltk.schema import (
+    nested_get,
+    validate_required_fields,
+    validate_state,
+)
 
 
 class TestValidState:
@@ -83,6 +87,54 @@ class TestControlPlaneInvalidType:
         result = validate_state(data)
         assert result.valid is False
         assert any("control_plane" in e for e in result.errors)
+
+
+class TestStatusWhitelist:
+    def test_valid_status_no_warning(self, sample_state_data: dict[str, Any]) -> None:
+        """A recognised status produces no status warning."""
+        result = validate_state(sample_state_data)
+        assert not any("Unrecognised status" in w for w in result.warnings)
+
+    def test_unknown_status_warns(self, sample_state_data: dict[str, Any]) -> None:
+        """An unknown status produces a soft warning (not an error)."""
+        data = copy.deepcopy(sample_state_data)
+        data["status"] = "banana"
+        result = validate_state(data)
+        assert result.valid is True  # soft warning only
+        assert any("Unrecognised status" in w for w in result.warnings)
+
+
+class TestTimestampValidation:
+    def test_valid_iso_no_warning(self, sample_state_data: dict[str, Any]) -> None:
+        """Valid ISO-8601 timestamps produce no warnings."""
+        result = validate_state(sample_state_data)
+        assert not any("not valid ISO-8601" in w for w in result.warnings)
+
+    def test_bad_timestamp_warns(self, sample_state_data: dict[str, Any]) -> None:
+        """A non-ISO-8601 timestamp produces a soft warning."""
+        data = copy.deepcopy(sample_state_data)
+        data["created_at"] = "not-a-timestamp"
+        result = validate_state(data)
+        assert any(
+            "created_at" in w and "not valid ISO-8601" in w
+            for w in result.warnings
+        )
+
+
+class TestBlockersTypeCheck:
+    def test_blockers_list_ok(self, sample_state_data: dict[str, Any]) -> None:
+        """blockers as a list passes validation."""
+        data = copy.deepcopy(sample_state_data)
+        data["current_work_package"]["blockers"] = ["blocker-1"]
+        errors = validate_required_fields(data)
+        assert not any("blockers" in e for e in errors)
+
+    def test_blockers_not_list_errors(self, sample_state_data: dict[str, Any]) -> None:
+        """blockers as a string produces a hard error."""
+        data = copy.deepcopy(sample_state_data)
+        data["current_work_package"]["blockers"] = "not-a-list"
+        errors = validate_required_fields(data)
+        assert any("blockers must be a list" in e for e in errors)
 
 
 class TestNestedGet:

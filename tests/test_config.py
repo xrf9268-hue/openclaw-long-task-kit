@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+import warnings
 from pathlib import Path
 
 import pytest
@@ -61,6 +62,36 @@ class TestPathOverride:
         assert cfg.state_dir == Path("/override/state")
         # Other derived paths still use the workspace
         assert cfg.heartbeat_path == Path("/base/ws") / "HEARTBEAT.md"
+
+
+class TestInvalidIntWarns:
+    def test_invalid_int_warns(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An invalid integer env var emits a warning and uses the default."""
+        monkeypatch.setenv("LTK_WORKSPACE", "/tmp/ws")
+        monkeypatch.setenv("LTK_TIMEOUT_SECONDS", "not-a-number")
+        monkeypatch.delenv("OPENCLAW_WORKSPACE", raising=False)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            cfg = LtkConfig.from_env()
+        assert cfg.timeout_seconds == 1800  # default
+        assert len(caught) == 1
+        assert "Invalid integer" in str(caught[0].message)
+        assert "LTK_TIMEOUT_SECONDS" in str(caught[0].message)
+
+
+class TestDeadThreshold:
+    def test_default(self) -> None:
+        """dead_threshold_minutes defaults to 30."""
+        cfg = LtkConfig(workspace=Path("/tmp/ws"))
+        assert cfg.dead_threshold_minutes == 30
+
+    def test_env_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """LTK_DEAD_THRESHOLD_MINUTES env var overrides the default."""
+        monkeypatch.setenv("LTK_WORKSPACE", "/tmp/ws")
+        monkeypatch.setenv("LTK_DEAD_THRESHOLD_MINUTES", "45")
+        monkeypatch.delenv("OPENCLAW_WORKSPACE", raising=False)
+        cfg = LtkConfig.from_env()
+        assert cfg.dead_threshold_minutes == 45
 
 
 class TestFrozen:

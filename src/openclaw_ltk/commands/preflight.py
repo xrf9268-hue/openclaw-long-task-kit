@@ -11,6 +11,7 @@ import click
 
 from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.cron import CronClient
+from openclaw_ltk.errors import StateFileError
 from openclaw_ltk.schema import (
     nested_get,
     validate_control_plane,
@@ -45,11 +46,11 @@ def check_cron_coverage(
     """Verify declared cron jobs are present and enabled."""
     declared: list[Any] = nested_get(state, "control_plane.cron_jobs") or []
     if not declared:
-        return True, "no cron jobs declared in control_plane"
+        return True, "no cron jobs declared in control_plane (expected for --skip-cron)"
 
     try:
         live_jobs = cron_client.list_jobs()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — external process; keep broad catch
         return False, f"could not list cron jobs: {exc}"
 
     live_by_name = {job.name: job for job in live_jobs}
@@ -169,7 +170,7 @@ def preflight_cmd(state_path: str, write_back: bool) -> None:
     sf = StateFile(Path(state_path))
     try:
         state = sf.load()
-    except Exception as exc:  # noqa: BLE001
+    except (StateFileError, OSError) as exc:
         click.echo(f"FATAL: could not load state file: {exc}", err=True)
         sys.exit(2)
 
@@ -179,7 +180,7 @@ def preflight_cmd(state_path: str, write_back: bool) -> None:
     for name, fn in _CHECKS:
         try:
             passed, detail = fn(state, config, cron_client)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — deliberate catch-all for arbitrary check functions
             passed = False
             detail = f"exception: {exc}"
         results.append((name, passed, detail))
@@ -207,7 +208,7 @@ def preflight_cmd(state_path: str, write_back: bool) -> None:
                         for name, passed, detail in results
                     },
                 }
-        except Exception as exc:  # noqa: BLE001
+        except (StateFileError, OSError) as exc:
             click.echo(f"WARNING: write-back failed: {exc}", err=True)
 
     sys.exit(0 if all_passed else 1)
