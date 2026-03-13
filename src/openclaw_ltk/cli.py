@@ -25,6 +25,7 @@ from openclaw_ltk.commands.preflight import preflight_cmd  # noqa: E402
 from openclaw_ltk.commands.resume import resume_cmd  # noqa: E402
 from openclaw_ltk.commands.status import status_cmd  # noqa: E402
 from openclaw_ltk.commands.watchdog import watchdog_cmd  # noqa: E402
+from openclaw_ltk.commands.webhooks import webhooks_cmd  # noqa: E402
 
 main.add_command(init_cmd, "init")
 main.add_command(preflight_cmd, "preflight")
@@ -36,3 +37,4 @@ main.add_command(pointer_cmd, "pointer")
 main.add_command(resume_cmd, "resume")
 main.add_command(status_cmd, "status")
 main.add_command(watchdog_cmd, "watchdog")
+main.add_command(webhooks_cmd, "webhooks")
