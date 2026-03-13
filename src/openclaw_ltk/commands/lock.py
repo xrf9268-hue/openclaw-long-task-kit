@@ -124,7 +124,7 @@ def release_cmd(state_path: str, owner: str) -> None:
 
     try:
         with sf.locked_update() as data:
-            cp: dict[str, Any] = data.get("control_plane")
+            cp: dict[str, Any] | None = data.get("control_plane")
             if not isinstance(cp, dict):
                 raise _InvalidState("control_plane block is missing or not a dict")
 

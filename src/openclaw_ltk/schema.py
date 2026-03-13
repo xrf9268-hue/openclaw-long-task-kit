@@ -40,7 +40,7 @@ def _is_nonempty(value: Any) -> bool:
     if value is None:
         return False
     if isinstance(value, (str, dict, list)):
-        return len(value) > 0  # type: ignore[arg-type]
+        return len(value) > 0
     return True
 
 

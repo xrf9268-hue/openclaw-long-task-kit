@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -142,7 +143,9 @@ def check_active_pointer(config: LtkConfig) -> tuple[bool, str]:
 # Click command
 # ---------------------------------------------------------------------------
 
-_CHECKS = [
+_CheckFn = Callable[[dict[str, Any], LtkConfig, CronClient], tuple[bool, str]]
+
+_CHECKS: list[tuple[str, _CheckFn]] = [
     ("required-fields", lambda state, config, cron: check_required_fields(state)),
     ("control-plane", lambda state, config, cron: check_control_plane(state)),
     ("cron-coverage", lambda state, config, cron: check_cron_coverage(state, cron)),
