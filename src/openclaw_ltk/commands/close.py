@@ -119,4 +119,4 @@ def close_cmd(state_path: str, write_back: bool) -> None:
     if heartbeat_ok and task_id:
         click.echo("  heartbeat entry removed")
 
-    sys.exit(0)
+    sys.exit(1 if partial else 0)

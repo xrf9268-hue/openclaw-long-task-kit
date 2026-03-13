@@ -54,6 +54,7 @@ def acquire_cmd(state_path: str, owner: str, ttl: int) -> None:
 
     try:
         acquired = False
+        renewed = False
         conflict_owner: str | None = None
 
         with sf.locked_update() as data:
@@ -72,6 +73,7 @@ def acquire_cmd(state_path: str, owner: str, ttl: int) -> None:
                         if _utc_now() < expires_dt:
                             # Lock is still valid — check if same owner.
                             if existing_lock.get("owner") == owner:
+                                renewed = True
                                 pass  # Same owner — fall through to refresh below.
                             else:
                                 conflict_owner = existing_lock.get("owner", "unknown")
@@ -82,6 +84,8 @@ def acquire_cmd(state_path: str, owner: str, ttl: int) -> None:
                     except (ValueError, TypeError, OverflowError):
                         # Unparseable expiry — treat as expired, allow overwrite.
                         pass
+                if existing_lock.get("owner") == owner:
+                    renewed = True
 
             acquired_at = now_utc_iso()
             cp["lock"] = {
@@ -102,7 +106,8 @@ def acquire_cmd(state_path: str, owner: str, ttl: int) -> None:
         sys.exit(2)
 
     if acquired:
-        click.echo(f"ACQUIRED: lock held by '{owner}' (ttl={ttl}s)")
+        verb = "RENEWED" if renewed else "ACQUIRED"
+        click.echo(f"{verb}: lock held by '{owner}' (ttl={ttl}s)")
         sys.exit(0)
 
 
