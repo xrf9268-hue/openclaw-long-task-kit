@@ -58,6 +58,9 @@ class LtkConfig:
     # Host-level exec approvals file managed by OpenClaw.
     exec_approvals_path: Path = dataclasses.field(default=Path())
 
+    # Structured local diagnostics JSONL file for wrapper activity and failures.
+    diagnostics_log_path: Path = dataclasses.field(default=Path())
+
     # IANA timezone name used for timestamps.
     timezone: str = "Asia/Shanghai"
 
@@ -118,6 +121,11 @@ class LtkConfig:
             approvals_path = openclaw_root / "exec-approvals.json"
         object.__setattr__(self, "exec_approvals_path", approvals_path)
 
+        diagnostics_path = _as_path(self.diagnostics_log_path)
+        if diagnostics_path == _sentinel:
+            diagnostics_path = openclaw_root / "ltk-diagnostics.jsonl"
+        object.__setattr__(self, "diagnostics_log_path", diagnostics_path)
+
     # ------------------------------------------------------------------
     # Factory
     # ------------------------------------------------------------------
@@ -136,6 +144,7 @@ class LtkConfig:
             LTK_BOOT_PATH            — BOOT.md location
             LTK_AGENTS_PATH          — AGENTS.md location
             LTK_EXEC_APPROVALS_PATH  — exec-approvals.json location
+            LTK_DIAGNOSTICS_LOG_PATH — local diagnostics JSONL location
 
         Scalar overrides:
             LTK_TIMEZONE                    — IANA timezone name
@@ -181,6 +190,7 @@ class LtkConfig:
             if _env("OPENCLAW_STATE_DIR")
             else Path(),
             exec_approvals_path=_opt_path("LTK_EXEC_APPROVALS_PATH"),
+            diagnostics_log_path=_opt_path("LTK_DIAGNOSTICS_LOG_PATH"),
             timezone=_env("LTK_TIMEZONE") or "Asia/Shanghai",
             telegram_chat_id=_env("LTK_TELEGRAM_CHAT_ID") or "",
             timeout_seconds=_opt_int("LTK_TIMEOUT_SECONDS", 1800),
