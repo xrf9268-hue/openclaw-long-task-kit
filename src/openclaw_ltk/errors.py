@@ -31,6 +31,10 @@ class CronError(LtkError):
     """Openclaw cron subprocess errors."""
 
 
+class OpenClawError(LtkError):
+    """OpenClaw CLI subprocess / parse errors."""
+
+
 class ValidationError(LtkError):
     """JSON schema / field validation errors."""
 

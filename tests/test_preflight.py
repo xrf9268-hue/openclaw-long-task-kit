@@ -15,6 +15,8 @@ from openclaw_ltk.commands.preflight import (
     check_child_checkpoint,
     check_control_plane,
     check_cron_coverage,
+    check_exec_approvals,
+    check_gateway_health,
     check_heartbeat,
     check_required_fields,
 )
@@ -78,6 +80,24 @@ class TestCheckActivePointer:
         assert ok is False
 
 
+class TestCheckGatewayHealth:
+    def test_pass(self, tmp_path: Path) -> None:
+        config = LtkConfig(workspace=tmp_path)
+        client = MagicMock()
+        client.health.return_value = {"ok": True}
+        ok, detail = check_gateway_health(config, client)
+        assert ok is True
+        assert "healthy" in detail
+
+    def test_fail(self, tmp_path: Path) -> None:
+        config = LtkConfig(workspace=tmp_path)
+        client = MagicMock()
+        client.health.side_effect = RuntimeError("gateway offline")
+        ok, detail = check_gateway_health(config, client)
+        assert ok is False
+        assert "gateway offline" in detail
+
+
 # ---------------------------------------------------------------------------
 # Additional individual check tests
 # ---------------------------------------------------------------------------
@@ -128,6 +148,31 @@ class TestCheckCronCoverage:
         assert "not found" in detail
 
 
+class TestCheckExecApprovals:
+    def test_uses_host_level_exec_approvals_path(self, tmp_path: Path) -> None:
+        config = LtkConfig(
+            workspace=tmp_path,
+            openclaw_state_dir=tmp_path / "host-state",
+        )
+        config.exec_approvals_path.parent.mkdir(parents=True, exist_ok=True)
+        config.exec_approvals_path.write_text("{}", encoding="utf-8")
+
+        ok, detail = check_exec_approvals(config)
+        assert ok is True
+        assert str(config.exec_approvals_path) in detail
+
+    def test_workspace_exec_approvals_file_is_not_enough(self, tmp_path: Path) -> None:
+        config = LtkConfig(
+            workspace=tmp_path,
+            openclaw_state_dir=tmp_path / "host-state",
+        )
+        (tmp_path / "exec-approvals.json").write_text("{}", encoding="utf-8")
+
+        ok, detail = check_exec_approvals(config)
+        assert ok is False
+        assert "host-level" in detail
+
+
 # ---------------------------------------------------------------------------
 # CLI entry point tests
 # ---------------------------------------------------------------------------
@@ -166,11 +211,19 @@ class TestPreflightCmd:
         # Mock cron client to avoid external process calls.
         mock_client = MagicMock()
         mock_client.list_jobs.return_value = []
+        mock_openclaw = MagicMock()
+        mock_openclaw.health.return_value = {"ok": True}
 
         runner = CliRunner()
-        with patch(
-            "openclaw_ltk.commands.preflight.CronClient",
-            return_value=mock_client,
+        with (
+            patch(
+                "openclaw_ltk.commands.preflight.CronClient",
+                return_value=mock_client,
+            ),
+            patch(
+                "openclaw_ltk.commands.preflight.OpenClawClient",
+                return_value=mock_openclaw,
+            ),
         ):
             result = runner.invoke(
                 main,
@@ -220,3 +273,55 @@ class TestPreflightCmd:
             ],
         )
         assert result.exit_code == 2
+
+    def test_write_back_includes_source_commands(
+        self, tmp_path: Path, sample_state_data: dict[str, Any]
+    ) -> None:
+        sample_state_data["control_plane"] = {"cron_jobs": []}
+        state_file = _write_state(tmp_path, sample_state_data)
+
+        config = LtkConfig(
+            workspace=tmp_path,
+            openclaw_state_dir=tmp_path / "host-state",
+        )
+        inject_heartbeat_entry(
+            config.heartbeat_path,
+            "2026-03-13-test-task",
+            "Test",
+            "active",
+            "Goal",
+            "2026-01-01",
+        )
+        config.pointer_path.parent.mkdir(parents=True, exist_ok=True)
+        config.pointer_path.write_text('{"task_id": "t1"}', encoding="utf-8")
+        config.exec_approvals_path.parent.mkdir(parents=True, exist_ok=True)
+        config.exec_approvals_path.write_text("{}", encoding="utf-8")
+
+        mock_cron = MagicMock()
+        mock_cron.list_jobs.return_value = []
+        mock_openclaw = MagicMock()
+        mock_openclaw.health.return_value = {"ok": True}
+
+        runner = CliRunner()
+        with (
+            patch("openclaw_ltk.commands.preflight.CronClient", return_value=mock_cron),
+            patch(
+                "openclaw_ltk.commands.preflight.OpenClawClient",
+                return_value=mock_openclaw,
+            ),
+        ):
+            result = runner.invoke(
+                main,
+                ["preflight", "--state", str(state_file), "--write-back"],
+                env={
+                    "LTK_WORKSPACE": str(tmp_path),
+                    "OPENCLAW_STATE_DIR": str(config.openclaw_state_dir),
+                },
+            )
+
+        assert result.exit_code == 0
+
+        written = json.loads(state_file.read_text(encoding="utf-8"))
+        checks = written["preflight"]["checks"]
+        assert checks["gateway-health"]["source"] == "openclaw health --json"
+        assert checks["exec-approvals"]["source"] == str(config.exec_approvals_path)

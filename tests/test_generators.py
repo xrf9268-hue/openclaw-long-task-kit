@@ -18,6 +18,10 @@ from openclaw_ltk.generators.heartbeat_entry import (
     inject_heartbeat_entry,
     remove_heartbeat_entry,
 )
+from openclaw_ltk.generators.workspace_bootstrap import (
+    inject_agents_directive,
+    inject_boot_entry,
+)
 
 # ---------------------------------------------------------------------------
 # cron_matrix
@@ -163,6 +167,25 @@ class TestGenerateAgentsDirective:
         assert "Long Task Directive" in result
 
 
+class TestInjectAgentsDirective:
+    def test_create_new_file(self, tmp_path: Path) -> None:
+        agents = tmp_path / "AGENTS.md"
+        inject_agents_directive(agents, "task-1", "/tmp/task.json")
+        text = agents.read_text(encoding="utf-8")
+        assert "Long Task Directive: task-1" in text
+        assert "/tmp/task.json" in text
+
+    def test_updates_existing_block_without_duplication(self, tmp_path: Path) -> None:
+        agents = tmp_path / "AGENTS.md"
+        agents.write_text("# Existing Rules\n", encoding="utf-8")
+        inject_agents_directive(agents, "task-1", "/tmp/one.json")
+        inject_agents_directive(agents, "task-1", "/tmp/two.json")
+        text = agents.read_text(encoding="utf-8")
+        assert text.count("Long Task Directive: task-1") == 1
+        assert "/tmp/two.json" in text
+        assert "# Existing Rules" in text
+
+
 # ---------------------------------------------------------------------------
 # boot_entry
 # ---------------------------------------------------------------------------
@@ -202,3 +225,40 @@ class TestGenerateBootEntry:
         )
         assert "4. Check logs" in result
         assert "5. Restart service" in result
+
+
+class TestInjectBootEntry:
+    def test_create_new_file(self, tmp_path: Path) -> None:
+        boot = tmp_path / "BOOT.md"
+        inject_boot_entry(
+            boot,
+            task_id="task-1",
+            title="Title",
+            goal="Goal",
+            state_path="/tmp/task.json",
+        )
+        text = boot.read_text(encoding="utf-8")
+        assert "Recovery: task-1" in text
+        assert "/tmp/task.json" in text
+
+    def test_updates_existing_block_without_duplication(self, tmp_path: Path) -> None:
+        boot = tmp_path / "BOOT.md"
+        boot.write_text("# Boot Notes\n", encoding="utf-8")
+        inject_boot_entry(
+            boot,
+            task_id="task-1",
+            title="Title",
+            goal="Goal",
+            state_path="/tmp/one.json",
+        )
+        inject_boot_entry(
+            boot,
+            task_id="task-1",
+            title="Title",
+            goal="Goal",
+            state_path="/tmp/two.json",
+        )
+        text = boot.read_text(encoding="utf-8")
+        assert text.count("Recovery: task-1") == 1
+        assert "/tmp/two.json" in text
+        assert "# Boot Notes" in text

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import multiprocessing
 import os
+import time
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -11,6 +13,14 @@ import pytest
 
 from openclaw_ltk.errors import StateFileError
 from openclaw_ltk.state import StateFile, atomic_write_text
+
+
+def _increment_under_lock(path: str, delay_before_write: float = 0.0) -> None:
+    sf = StateFile(Path(path))
+    with sf.locked_update() as data:
+        current = int(data["value"])
+        time.sleep(delay_before_write)
+        data["value"] = current + 1
 
 
 class TestAtomicWriteText:
@@ -35,7 +45,7 @@ class TestAtomicWriteText:
             raise OSError("simulated rename failure")
 
         with (
-            patch("openclaw_ltk.state.os.rename", side_effect=failing_rename),
+            patch("openclaw_ltk.state.os.replace", side_effect=failing_rename),
             pytest.raises(OSError, match="simulated rename failure"),
         ):
             atomic_write_text(target, "data")
@@ -76,13 +86,13 @@ class TestAtomicWrite:
         expected_tmp = path.with_suffix(path.suffix + ".tmp")
 
         rename_calls: list[tuple[Any, Any]] = []
-        original_rename = os.rename
+        original_replace = os.replace
 
-        def capturing_rename(src: Any, dst: Any) -> None:
+        def capturing_replace(src: Any, dst: Any) -> None:
             rename_calls.append((Path(src), Path(dst)))
-            original_rename(src, dst)
+            original_replace(src, dst)
 
-        with patch("os.rename", side_effect=capturing_rename):
+        with patch("os.replace", side_effect=capturing_replace):
             sf.save(sample_state_data)
 
         assert len(rename_calls) == 1
@@ -169,3 +179,40 @@ class TestLockedUpdate:
         # produces a UTC ISO string.  That format differs from the +08:00 fixture value.
         # Sanity: updated_at was written (always passes if non-empty).
         assert reloaded["updated_at"]
+
+    def test_locked_update_creates_sidecar_lock_file(self, tmp_state_dir: Path) -> None:
+        path = tmp_state_dir / "task.json"
+        sf = StateFile(path)
+        sf.save({"value": 0})
+
+        with sf.locked_update() as data:
+            data["value"] = 1
+
+        assert path.with_suffix(".json.lock").exists()
+
+    def test_locked_update_serializes_parallel_writers(
+        self, tmp_state_dir: Path
+    ) -> None:
+        path = tmp_state_dir / "task.json"
+        sf = StateFile(path)
+        sf.save({"value": 0})
+
+        first = multiprocessing.Process(
+            target=_increment_under_lock,
+            args=(str(path), 0.2),
+        )
+        second = multiprocessing.Process(
+            target=_increment_under_lock,
+            args=(str(path), 0.0),
+        )
+
+        first.start()
+        time.sleep(0.05)
+        second.start()
+
+        first.join(timeout=5)
+        second.join(timeout=5)
+
+        assert first.exitcode == 0
+        assert second.exitcode == 0
+        assert sf.load()["value"] == 2

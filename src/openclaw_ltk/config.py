@@ -46,8 +46,17 @@ class LtkConfig:
     # Path to the BOOT.md startup record.
     boot_path: Path = dataclasses.field(default=Path())
 
+    # Path to AGENTS.md directive file.
+    agents_path: Path = dataclasses.field(default=Path())
+
     # Path to the active-task pointer JSON file.
     pointer_path: Path = dataclasses.field(default=Path())
+
+    # Root OpenClaw state directory on the host machine.
+    openclaw_state_dir: Path = dataclasses.field(default=Path())
+
+    # Host-level exec approvals file managed by OpenClaw.
+    exec_approvals_path: Path = dataclasses.field(default=Path())
 
     # IANA timezone name used for timestamps.
     timezone: str = "Asia/Shanghai"
@@ -88,6 +97,7 @@ class LtkConfig:
             "state_dir": ws / "tasks" / "state",
             "heartbeat_path": ws / "HEARTBEAT.md",
             "boot_path": ws / "BOOT.md",
+            "agents_path": ws / "AGENTS.md",
             "pointer_path": ws / "tasks" / ".active-task-pointer.json",
         }
 
@@ -97,6 +107,16 @@ class LtkConfig:
             # Use the derived default when the field still holds the sentinel.
             resolved = default if coerced == _sentinel else coerced
             object.__setattr__(self, field_name, resolved)
+
+        openclaw_root = _as_path(self.openclaw_state_dir)
+        if openclaw_root == _sentinel:
+            openclaw_root = Path.home() / ".openclaw"
+        object.__setattr__(self, "openclaw_state_dir", openclaw_root)
+
+        approvals_path = _as_path(self.exec_approvals_path)
+        if approvals_path == _sentinel:
+            approvals_path = openclaw_root / "exec-approvals.json"
+        object.__setattr__(self, "exec_approvals_path", approvals_path)
 
     # ------------------------------------------------------------------
     # Factory
@@ -114,6 +134,8 @@ class LtkConfig:
             LTK_STATE_DIR            — state directory
             LTK_HEARTBEAT_PATH       — HEARTBEAT.md location
             LTK_BOOT_PATH            — BOOT.md location
+            LTK_AGENTS_PATH          — AGENTS.md location
+            LTK_EXEC_APPROVALS_PATH  — exec-approvals.json location
 
         Scalar overrides:
             LTK_TIMEZONE                    — IANA timezone name
@@ -153,7 +175,12 @@ class LtkConfig:
             state_dir=_opt_path("LTK_STATE_DIR"),
             heartbeat_path=_opt_path("LTK_HEARTBEAT_PATH"),
             boot_path=_opt_path("LTK_BOOT_PATH"),
+            agents_path=_opt_path("LTK_AGENTS_PATH"),
             # pointer_path has no dedicated override; always derived.
+            openclaw_state_dir=Path(_env("OPENCLAW_STATE_DIR") or "")
+            if _env("OPENCLAW_STATE_DIR")
+            else Path(),
+            exec_approvals_path=_opt_path("LTK_EXEC_APPROVALS_PATH"),
             timezone=_env("LTK_TIMEZONE") or "Asia/Shanghai",
             telegram_chat_id=_env("LTK_TELEGRAM_CHAT_ID") or "",
             timeout_seconds=_opt_int("LTK_TIMEOUT_SECONDS", 1800),

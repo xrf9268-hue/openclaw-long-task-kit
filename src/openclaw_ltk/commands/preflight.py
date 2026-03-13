@@ -12,6 +12,7 @@ import click
 from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.cron import CronClient
 from openclaw_ltk.errors import StateFileError
+from openclaw_ltk.openclaw_cli import OpenClawClient
 from openclaw_ltk.schema import (
     nested_get,
     validate_control_plane,
@@ -117,19 +118,11 @@ def check_post_restart_probe(state: dict[str, Any]) -> tuple[bool, str]:
 
 
 def check_exec_approvals(config: LtkConfig) -> tuple[bool, str]:
-    """Verify the exec-approvals file exists in the workspace."""
-    # Convention: exec-approvals lives at workspace/exec-approvals.json or .md
-    ws = config.workspace
-    candidates = [
-        ws / "exec-approvals.json",
-        ws / "exec-approvals.md",
-        ws / "exec-approvals.txt",
-        ws / "exec-approvals",
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            return True, f"exec-approvals file found: {candidate.name}"
-    return False, f"no exec-approvals file found in {ws}"
+    """Verify the host-level exec-approvals file exists."""
+    path = config.exec_approvals_path
+    if path.exists():
+        return True, f"host-level exec approvals file present: {path}"
+    return False, f"host-level exec approvals file not found at {path}"
 
 
 def check_active_pointer(config: LtkConfig) -> tuple[bool, str]:
@@ -140,22 +133,136 @@ def check_active_pointer(config: LtkConfig) -> tuple[bool, str]:
     return True, "active task pointer file present"
 
 
+def check_gateway_health(
+    config: LtkConfig, openclaw: OpenClawClient
+) -> tuple[bool, str]:
+    """Verify the local OpenClaw gateway responds to a health probe."""
+    _ = config  # kept for future config-based overrides
+    try:
+        payload = openclaw.health()
+    except Exception as exc:  # noqa: BLE001 - external command surface
+        return False, f"gateway health probe failed: {exc}"
+
+    if isinstance(payload, dict):
+        if "ok" in payload and not bool(payload["ok"]):
+            return False, f"gateway reported unhealthy payload: {payload}"
+        if "healthy" in payload and not bool(payload["healthy"]):
+            return False, f"gateway reported unhealthy payload: {payload}"
+        status = payload.get("status")
+        if isinstance(status, str) and status.lower() not in {"ok", "healthy", "pass"}:
+            return False, f"gateway reported status={status!r}"
+
+    return True, "gateway healthy"
+
+
 # ---------------------------------------------------------------------------
 # Click command
 # ---------------------------------------------------------------------------
 
-_CheckFn = Callable[[dict[str, Any], LtkConfig, CronClient], tuple[bool, str]]
-
-_CHECKS: list[tuple[str, _CheckFn]] = [
-    ("required-fields", lambda state, config, cron: check_required_fields(state)),
-    ("control-plane", lambda state, config, cron: check_control_plane(state)),
-    ("cron-coverage", lambda state, config, cron: check_cron_coverage(state, cron)),
-    ("heartbeat", lambda state, config, cron: check_heartbeat(config)),
-    ("child-checkpoint", lambda state, config, cron: check_child_checkpoint(state)),
-    ("post-restart-probe", lambda state, config, cron: check_post_restart_probe(state)),
-    ("exec-approvals", lambda state, config, cron: check_exec_approvals(config)),
-    ("active-pointer", lambda state, config, cron: check_active_pointer(config)),
+_CheckFn = Callable[
+    [dict[str, Any], LtkConfig, CronClient, OpenClawClient], tuple[bool, str]
 ]
+_CheckSource = Callable[[LtkConfig], str] | str
+
+_CHECKS: list[tuple[str, _CheckSource, _CheckFn]] = [
+    (
+        "required-fields",
+        "state file",
+        lambda state, config, cron, openclaw: check_required_fields(state),
+    ),
+    (
+        "control-plane",
+        "state file",
+        lambda state, config, cron, openclaw: check_control_plane(state),
+    ),
+    (
+        "cron-coverage",
+        "openclaw cron list --json",
+        lambda state, config, cron, openclaw: check_cron_coverage(state, cron),
+    ),
+    (
+        "heartbeat",
+        "workspace HEARTBEAT.md",
+        lambda state, config, cron, openclaw: check_heartbeat(config),
+    ),
+    (
+        "gateway-health",
+        "openclaw health --json",
+        lambda state, config, cron, openclaw: check_gateway_health(
+            config, openclaw
+        ),
+    ),
+    (
+        "child-checkpoint",
+        "state file",
+        lambda state, config, cron, openclaw: check_child_checkpoint(state),
+    ),
+    (
+        "post-restart-probe",
+        "state file",
+        lambda state, config, cron, openclaw: check_post_restart_probe(state),
+    ),
+    (
+        "exec-approvals",
+        lambda config: str(config.exec_approvals_path),
+        lambda state, config, cron, openclaw: check_exec_approvals(config),
+    ),
+    (
+        "active-pointer",
+        lambda config: str(config.pointer_path),
+        lambda state, config, cron, openclaw: check_active_pointer(config),
+    ),
+]
+
+
+def run_preflight_checks(
+    state: dict[str, Any],
+    config: LtkConfig,
+    *,
+    cron_client: CronClient | None = None,
+    openclaw: OpenClawClient | None = None,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Run all preflight checks and return overall status plus structured results."""
+    cron = cron_client or CronClient()
+    openclaw_client = openclaw or OpenClawClient()
+
+    results: list[dict[str, Any]] = []
+    all_passed = True
+
+    for name, source, fn in _CHECKS:
+        try:
+            passed, detail = fn(state, config, cron, openclaw_client)
+        except Exception as exc:  # noqa: BLE001 — deliberate catch-all for arbitrary check functions
+            passed = False
+            detail = f"exception: {exc}"
+
+        resolved_source = source(config) if callable(source) else source
+        results.append(
+            {
+                "name": name,
+                "passed": passed,
+                "detail": detail,
+                "source": resolved_source,
+            }
+        )
+        if not passed:
+            all_passed = False
+
+    return ("PASS" if all_passed else "FAIL"), results
+
+
+def print_preflight_results(overall: str, results: list[dict[str, Any]]) -> None:
+    """Render structured preflight results to stdout."""
+    click.echo(overall)
+    for item in results:
+        name = str(item["name"])
+        passed = bool(item["passed"])
+        detail = str(item["detail"])
+        mark = "\u2713" if passed else "\u2717"
+        line = f"  [{mark}] {name}"
+        if not passed:
+            line += f": {detail}"
+        click.echo(line)
 
 
 @click.command("preflight")
@@ -164,7 +271,6 @@ _CHECKS: list[tuple[str, _CheckFn]] = [
 def preflight_cmd(state_path: str, write_back: bool) -> None:
     """Run preflight checks before starting a long task."""
     config = LtkConfig.from_env()
-    cron_client = CronClient()
 
     # Load state file.
     sf = StateFile(Path(state_path))
@@ -174,28 +280,8 @@ def preflight_cmd(state_path: str, write_back: bool) -> None:
         click.echo(f"FATAL: could not load state file: {exc}", err=True)
         sys.exit(2)
 
-    # Run all checks.
-    results: list[tuple[str, bool, str]] = []
-    all_passed = True
-    for name, fn in _CHECKS:
-        try:
-            passed, detail = fn(state, config, cron_client)
-        except Exception as exc:  # noqa: BLE001 — deliberate catch-all for arbitrary check functions
-            passed = False
-            detail = f"exception: {exc}"
-        results.append((name, passed, detail))
-        if not passed:
-            all_passed = False
-
-    # Print summary.
-    overall = "PASS" if all_passed else "FAIL"
-    click.echo(overall)
-    for name, passed, detail in results:
-        mark = "\u2713" if passed else "\u2717"
-        line = f"  [{mark}] {name}"
-        if not passed:
-            line += f": {detail}"
-        click.echo(line)
+    overall, results = run_preflight_checks(state, config)
+    print_preflight_results(overall, results)
 
     # Optional write-back.
     if write_back:
@@ -204,11 +290,15 @@ def preflight_cmd(state_path: str, write_back: bool) -> None:
                 data["preflight"] = {
                     "overall": overall,
                     "checks": {
-                        name: {"passed": passed, "detail": detail}
-                        for name, passed, detail in results
+                        str(item["name"]): {
+                            "passed": bool(item["passed"]),
+                            "detail": str(item["detail"]),
+                            "source": str(item["source"]),
+                        }
+                        for item in results
                     },
                 }
         except (StateFileError, OSError) as exc:
             click.echo(f"WARNING: write-back failed: {exc}", err=True)
 
-    sys.exit(0 if all_passed else 1)
+    sys.exit(0 if overall == "PASS" else 1)

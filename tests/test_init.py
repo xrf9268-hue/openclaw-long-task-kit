@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from click.testing import CliRunner
+from click.testing import CliRunner, Result
 
 from openclaw_ltk.cli import main
 from openclaw_ltk.commands.init import _build_state_data, _run_init_preflight
@@ -14,7 +14,7 @@ from openclaw_ltk.commands.init import _build_state_data, _run_init_preflight
 
 def _run_init(
     runner: CliRunner, tmp_path: Path, extra: list[str] | None = None
-) -> object:
+) -> Result:
     """Helper: invoke ltk init with standard args pointing at tmp workspace."""
     args = [
         "init",
@@ -62,6 +62,28 @@ class TestInitSkipCron:
         assert "goal" in data
         assert data["status"] == "launching"
         assert "control_plane" in data
+
+    def test_writes_boot_agents_and_pointer(self, tmp_path: Path) -> None:
+        runner = CliRunner()
+        result = _run_init(runner, tmp_path)
+        assert result.exit_code == 0
+
+        state_files = list((tmp_path / "tasks" / "state").glob("*.json"))
+        assert len(state_files) == 1
+        state_path = state_files[0]
+
+        boot_text = (tmp_path / "BOOT.md").read_text(encoding="utf-8")
+        agents_text = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+        pointer_data = json.loads(
+            (tmp_path / "tasks" / ".active-task-pointer.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        assert str(state_path) in boot_text
+        assert str(state_path) in agents_text
+        assert pointer_data["state_path"] == str(state_path)
+        assert pointer_data["task_id"] == state_path.stem
 
 
 class TestBuildStateData:

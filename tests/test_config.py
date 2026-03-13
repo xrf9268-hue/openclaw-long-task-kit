@@ -49,7 +49,12 @@ class TestDerivedPaths:
         assert cfg.state_dir == ws / "tasks" / "state"
         assert cfg.heartbeat_path == ws / "HEARTBEAT.md"
         assert cfg.boot_path == ws / "BOOT.md"
+        assert cfg.agents_path == ws / "AGENTS.md"
         assert cfg.pointer_path == ws / "tasks" / ".active-task-pointer.json"
+        assert cfg.openclaw_state_dir == Path.home() / ".openclaw"
+        assert cfg.exec_approvals_path == (
+            Path.home() / ".openclaw" / "exec-approvals.json"
+        )
 
 
 class TestPathOverride:
@@ -62,6 +67,16 @@ class TestPathOverride:
         assert cfg.state_dir == Path("/override/state")
         # Other derived paths still use the workspace
         assert cfg.heartbeat_path == Path("/base/ws") / "HEARTBEAT.md"
+
+    def test_openclaw_state_dir_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """OPENCLAW_STATE_DIR should drive host-level OpenClaw paths."""
+        monkeypatch.setenv("LTK_WORKSPACE", "/base/ws")
+        monkeypatch.setenv("OPENCLAW_STATE_DIR", "/srv/openclaw-state")
+        cfg = LtkConfig.from_env()
+        assert cfg.openclaw_state_dir == Path("/srv/openclaw-state")
+        assert cfg.exec_approvals_path == (
+            Path("/srv/openclaw-state") / "exec-approvals.json"
+        )
 
 
 class TestInvalidIntWarns:

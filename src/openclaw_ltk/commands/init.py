@@ -7,17 +7,19 @@ Steps performed:
   4. Create continuation cron job.
   5. Create deadman cron job.
   6. Create closure-check cron job.
-  7. Update HEARTBEAT.md.
-  8. Run preflight validation.
-  9. Output timeoutSeconds recommendation.
- 10. Write cron job IDs back into state and save.
+  7. Run preflight validation.
+  8. Write cron job IDs back into state and save.
+  9. Update bootstrap files (HEARTBEAT / BOOT / AGENTS / pointer).
+ 10. Output timeoutSeconds recommendation.
 """
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 
 import click
@@ -33,8 +35,12 @@ from openclaw_ltk.generators.cron_matrix import (
     build_watchdog_spec,
 )
 from openclaw_ltk.generators.heartbeat_entry import inject_heartbeat_entry
+from openclaw_ltk.generators.workspace_bootstrap import (
+    inject_agents_directive,
+    inject_boot_entry,
+)
 from openclaw_ltk.schema import ValidationResult, validate_state
-from openclaw_ltk.state import StateFile
+from openclaw_ltk.state import StateFile, atomic_write_text
 
 # ---------------------------------------------------------------------------
 # Private helpers
@@ -157,6 +163,19 @@ def _create_cron_jobs(
 def _run_init_preflight(data: dict[str, Any]) -> ValidationResult:
     """Run schema validation on the state data and return the result."""
     return validate_state(data)
+
+
+def _write_active_pointer(pointer_path: Path, task_id: str, state_path: Path) -> None:
+    payload = {
+        "task_id": task_id,
+        "state_path": str(state_path),
+        "set_at": now_iso("UTC"),
+    }
+    pointer_path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(
+        pointer_path,
+        json.dumps(payload, ensure_ascii=False, indent=2),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -289,26 +308,9 @@ def init_cmd(
                 sys.exit(2)
 
     # ------------------------------------------------------------------ #
-    # Step 7 — Update HEARTBEAT.md                                         #
+    # Step 7 — Preflight validation                                        #
     # ------------------------------------------------------------------ #
-    click.echo(f"[7/10] Updating HEARTBEAT.md at {config.heartbeat_path}.")
-    try:
-        inject_heartbeat_entry(
-            heartbeat_path=config.heartbeat_path,
-            task_id=task_id,
-            title=title,
-            status="launching",
-            goal=goal,
-            updated_at=now_str,
-        )
-    except OSError as exc:
-        click.echo(f"ERROR: Failed to update HEARTBEAT.md: {exc}")
-        sys.exit(2)
-
-    # ------------------------------------------------------------------ #
-    # Step 8 — Preflight validation                                        #
-    # ------------------------------------------------------------------ #
-    click.echo("[8/10] Running preflight validation.")
+    click.echo("[7/10] Running preflight validation.")
     result = _run_init_preflight(data)
 
     if result.warnings:
@@ -324,26 +326,9 @@ def init_cmd(
     click.echo("       Preflight passed.")
 
     # ------------------------------------------------------------------ #
-    # Step 9 — Output timeoutSeconds recommendation                        #
+    # Step 8 — Write cron job IDs back into state and save                #
     # ------------------------------------------------------------------ #
-    click.echo("[9/10] Timeout recommendation.")
-    recommended_timeout = duration * 60
-    click.echo(
-        f"       Recommended timeoutSeconds: {recommended_timeout} "
-        f"({duration} min * 60). "
-        f"Current config: {config.timeout_seconds}s."
-    )
-    if config.timeout_seconds < recommended_timeout:
-        click.echo(
-            f"       NOTE: LTK_TIMEOUT_SECONDS ({config.timeout_seconds}) is less than "
-            f"the recommended value ({recommended_timeout}). "
-            "Consider increasing it via the LTK_TIMEOUT_SECONDS env var."
-        )
-
-    # ------------------------------------------------------------------ #
-    # Step 10 — Write cron job IDs back into state and save               #
-    # ------------------------------------------------------------------ #
-    click.echo("[10/10] Writing state file.")
+    click.echo("[8/10] Writing state file.")
     data["control_plane"]["cron_jobs"] = cron_jobs
 
     try:
@@ -358,9 +343,60 @@ def init_cmd(
         click.echo(f"ERROR: Failed to write state file: {exc}")
         sys.exit(2)
 
+    # ------------------------------------------------------------------ #
+    # Step 9 — Update bootstrap files                                     #
+    # ------------------------------------------------------------------ #
+    click.echo("[9/10] Updating bootstrap files.")
+    try:
+        inject_heartbeat_entry(
+            heartbeat_path=config.heartbeat_path,
+            task_id=task_id,
+            title=title,
+            status="launching",
+            goal=goal,
+            updated_at=now_str,
+        )
+        inject_boot_entry(
+            config.boot_path,
+            task_id=task_id,
+            title=title,
+            goal=goal,
+            state_path=str(state_path),
+        )
+        inject_agents_directive(
+            config.agents_path,
+            task_id=task_id,
+            state_path=str(state_path),
+            config_hints={"timeout_seconds": config.timeout_seconds},
+        )
+        _write_active_pointer(config.pointer_path, task_id, state_path)
+    except OSError as exc:
+        click.echo(f"ERROR: Failed to update bootstrap files: {exc}")
+        sys.exit(2)
+
+    # ------------------------------------------------------------------ #
+    # Step 10 — Output timeoutSeconds recommendation                      #
+    # ------------------------------------------------------------------ #
+    click.echo("[10/10] Timeout recommendation.")
+    recommended_timeout = duration * 60
+    click.echo(
+        f"       Recommended timeoutSeconds: {recommended_timeout} "
+        f"({duration} min * 60). "
+        f"Current config: {config.timeout_seconds}s."
+    )
+    if config.timeout_seconds < recommended_timeout:
+        click.echo(
+            f"       NOTE: LTK_TIMEOUT_SECONDS ({config.timeout_seconds}) is less than "
+            f"the recommended value ({recommended_timeout}). "
+            "Consider increasing it via the LTK_TIMEOUT_SECONDS env var."
+        )
+
     click.echo(f"\nTask '{task_id}' initialised successfully.")
     click.echo(f"  State file : {state_path}")
     click.echo(f"  Heartbeat  : {config.heartbeat_path}")
+    click.echo(f"  BOOT file  : {config.boot_path}")
+    click.echo(f"  AGENTS file: {config.agents_path}")
+    click.echo(f"  Pointer    : {config.pointer_path}")
     if cron_jobs:
         for name, job_id in cron_jobs.items():
             click.echo(f"  Cron [{name}] : {job_id}")
