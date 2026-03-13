@@ -7,6 +7,12 @@
 
 ## 项目现状总结
 
+> 进度更新（2026-03-13，Phase 2 / Phase 3 follow-ups）：
+> - 已补齐 `ltk doctor` / `ltk logs` / `ltk resume` / `ltk webhooks`
+> - 已增加本地 diagnostics JSONL、runtime service hints、memory bootstrap
+> - 已提供 systemd-user / launchd 示例模板
+> - 最新本地验证结果：`pytest -q` **150 passed**，`ruff` / `mypy --strict` 均通过
+
 项目已经具备一套可用的长任务控制平面雏形：
 
 - **状态管理**：有原子写入、`fcntl` 文件锁、状态文件封装、显式错误包装
@@ -14,8 +20,8 @@
 - **Cron 矩阵**：4 个标准任务生成器（watchdog / continuation / deadman / closure-check）
 - **策略引擎**：continuation、deadman、exhaustion 三类策略函数已实现
 - **生成器**：`heartbeat_entry` / `boot_entry` / `agents_directive` / `cron_matrix`
-- **CLI 命令**：`init` / `preflight` / `lock` / `close` / `pointer` / `status` / `watchdog`
-- **质量保证**：`mypy --strict`、`ruff`、CI 覆盖 Python 3.11-3.13；本地已验证 `pytest` **120 passed**
+- **CLI 命令**：`init` / `preflight` / `lock` / `close` / `pointer` / `status` / `watchdog` / `doctor` / `logs` / `resume` / `webhooks`
+- **质量保证**：`mypy --strict`、`ruff`、CI 覆盖 Python 3.11-3.13；本地已验证 `pytest` **150 passed**
 
 但它距离研究报告和 upstream OpenClaw 所描述的“24/7 自主推进系统”仍有明显差距，而且当前报告原版对少数能力有**高估覆盖度**的问题。
 
@@ -45,9 +51,9 @@
 | 2 | **`init` 未接入 `BOOT.md` / `AGENTS.md` 生成器** | 生成器存在，但初始化流程只写 state + cron + HEARTBEAT | BOOT 恢复清单和自主行为指令没有真正进入工作流 |
 | 3 | **Heartbeat 仅覆盖文件条目，不覆盖真正调度能力** | 无 cadence、target、activeHours、24/7 配置层 | 很难把项目对齐到研究报告强调的“无人值守推进” |
 | 4 | **无 Gateway 健康检查** | `preflight` 只检查本地状态/文件/cron 声明 | 无法验证 `openclaw status/health`、守护进程可达性、网关在线性 |
-| 5 | **无 Webhook 触发支持** | 没有 `/hooks/wake` / `/hooks/agent` 相关桥接 | 无法接外部系统回调，长任务自动化闭环不完整 |
-| 6 | **无 systemd / launchd 服务模板** | 没有 daemon/lingering/onboarding 配套 | 24/7 持续运行底座缺失 |
-| 7 | **无结构化日志 / 诊断导出** | 主要输出仍是 `click.echo` | 不能对齐 upstream JSONL 日志、`logs --follow`、诊断标记和可观测性能力 |
+| 5 | **Webhook 仍是配置辅助，不是运行时桥接** | 已有 `ltk webhooks` 配置模板/校验，但没有 `/hooks/wake` / `/hooks/agent` 桥接 | 无法直接接外部系统回调，自动化闭环仍不完整 |
+| 6 | **systemd / launchd 只有示例模板** | 已补 `templates/systemd-user/` 与 `templates/launchd/`，但无安装/自愈流程 | 24/7 持续运行底座仍需进一步产品化 |
+| 7 | **可观测性仍是本地 JSONL 级别** | 已有结构化 diagnostics JSONL 与 `ltk logs` wrapper 记录 | 仍未对齐 OTel/导出管线等更完整可观测性能力 |
 
 ---
 
@@ -55,14 +61,14 @@
 
 | # | 改进项 | 说明 |
 |---|--------|------|
-| 8 | **缺少 `ltk doctor` 命令** | upstream 有 `openclaw doctor`；当前缺统一环境诊断入口 |
-| 9 | **缺少 `ltk resume` 命令** | `BOOT.md` 生成器存在，但无“按恢复清单继续任务”的命令 |
-| 10 | **无 MEMORY.md / memory/*.md 管理** | 当前没有 daily memory、long-term memory、写入约定、检索入口 |
+| 8 | **`ltk doctor` 仍偏向 wrapper，不是完整运维面板** | 已补齐 upstream doctor 包装、本地 heartbeat/runtime checks | 仍缺更多 runtime/daemon 安装诊断 |
+| 9 | **`ltk resume` 已实现，但恢复链仍偏轻量** | 已会跑 preflight、刷新 bootstrap、追加 memory note | 仍未接入外部 worker / 通知动作 |
+| 10 | **MEMORY 体系仅覆盖 bootstrap** | 已创建 `MEMORY.md` 与 `memory/*.md` 并在 resume/init 追加 note | 仍无检索、索引、提炼与 flush 机制 |
 | 11 | **无 memory tools / memory flush 设计** | 与 upstream 的 `memory_search` / `memory_get` / pre-compaction memory flush 相比缺口很大 |
 | 12 | **无通知发送能力** | `telegram_chat_id` 仅出现在配置中，没有任何实际发送逻辑 |
 | 13 | **continuation prompt 未接入 cron 任务** | `build_continuation_prompt()` 已实现，但 cron payload 仍是静态文案 |
-| 14 | **exhaustion 策略未集成到任何命令** | 只有策略函数，没有触发链路 |
-| 15 | **README.md 缺失** | 这是产品化缺口，但优先级低于 24/7 主链路缺口 |
+| 14 | **exhaustion 只进入输出层，不驱动自动恢复** | `status` / `resume` 已展示 continuation / exhaustion 结果 | 仍无通知、自动 pause/abort 执行动作 |
+| 15 | **README 需要随着 CLI 继续演进** | 已补 README 与命令/职责说明 | 后续功能变更后要持续同步 |
 | 16 | **审批检查未指向真实 OpenClaw 主机配置** | 当前只看 workspace 文件，不看 `~/.openclaw/exec-approvals.json` |
 
 ---
@@ -85,12 +91,12 @@
 | 21 | `close` 用例偏少 | `tests/test_close.py`：当前 2 个测试，缺 partial close、heartbeat 删除失败、write-back 失败等场景 |
 | 22 | `lock` 用例偏少 | `tests/test_lock.py`：当前 3 个测试，缺 TTL 过期、同 owner 续期、损坏锁状态等场景 |
 | 23 | `pointer` 用例偏少 | `tests/test_pointer.py`：当前 3 个测试，缺损坏 JSON、权限错误等边界 |
-| 24 | 测试总量应更新 | 当前总计 **120** 个测试，不应再写 “111+” |
+| 24 | 测试总量应更新 | 当前总计 **150** 个测试，不应再写 “111+” |
 
 补充说明：
 
 - 本地已在 WSL 中创建 `.venv` 并执行 `pytest -q`
-- 结果：**120 passed**
+- 结果：**150 passed**
 
 ---
 

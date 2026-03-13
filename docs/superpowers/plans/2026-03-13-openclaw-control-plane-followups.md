@@ -18,9 +18,12 @@
   - host-level preflight gateway/approval checks
   - idempotent `HEARTBEAT.md` / `BOOT.md` / `AGENTS.md` bootstrap updates
   - `ltk doctor`, `ltk logs`, `ltk resume`
+  - local diagnostics JSONL output and wrapper activity logging
+  - runtime service / heartbeat config diagnostics plus service templates
+  - `MEMORY.md` / `memory/YYYY-MM-DD.md` bootstrap helpers
+  - continuation / exhaustion summaries in `status` and `resume`
+  - `ltk webhooks` config helper command
 - Remaining work in this plan:
-  - Phase 2: 24/7 runtime and observability hardening
-  - Phase 3: memory, continuation, and webhook-oriented task progression
   - Phase 4: documentation and edge-case test hardening
 
 ## Chunk 1: Phase 2 Runtime Hardening
