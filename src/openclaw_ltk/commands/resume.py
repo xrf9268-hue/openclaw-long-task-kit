@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from openclaw_ltk.clock import now_iso
+from openclaw_ltk.clock import now, now_iso
 from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.cron import CronClient
 from openclaw_ltk.errors import LtkError
@@ -16,6 +16,7 @@ from openclaw_ltk.generators.workspace_bootstrap import (
     inject_agents_directive,
     inject_boot_entry,
 )
+from openclaw_ltk.memory import append_daily_memory_note
 from openclaw_ltk.openclaw_cli import OpenClawClient
 from openclaw_ltk.policies.continuation import (
     build_continuation_prompt,
@@ -95,6 +96,11 @@ def resume_cmd(state_path: str) -> None:
         config_hints={"timeout_seconds": config.timeout_seconds},
     )
     _write_active_pointer(config.pointer_path, task_id, resolved_state_path)
+    append_daily_memory_note(
+        config,
+        now(config.timezone),
+        f"Resume checkpoint for {task_id} from {resolved_state_path}",
+    )
 
     decision = should_continue(state)
     exhaustion = evaluate_exhaustion(state)

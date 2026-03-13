@@ -52,6 +52,12 @@ class LtkConfig:
     # Path to the active-task pointer JSON file.
     pointer_path: Path = dataclasses.field(default=Path())
 
+    # Workspace-level memory index file.
+    memory_index_path: Path = dataclasses.field(default=Path())
+
+    # Directory containing daily memory markdown files.
+    memory_dir: Path = dataclasses.field(default=Path())
+
     # Root OpenClaw state directory on the host machine.
     openclaw_state_dir: Path = dataclasses.field(default=Path())
 
@@ -105,6 +111,8 @@ class LtkConfig:
             "boot_path": ws / "BOOT.md",
             "agents_path": ws / "AGENTS.md",
             "pointer_path": ws / "tasks" / ".active-task-pointer.json",
+            "memory_index_path": ws / "MEMORY.md",
+            "memory_dir": ws / "memory",
         }
 
         for field_name, default in derived.items():
