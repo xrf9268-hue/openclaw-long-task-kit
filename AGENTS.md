@@ -16,12 +16,12 @@ The core design constraint is non-negotiable:
 
 ## Environment
 
-- Treat this project as developed in WSL Ubuntu 24.04.
-- Use Linux paths such as `/home/yvan/projects/openclaw-long-task-kit`.
-- Do not use Windows paths such as `\\wsl$\\...`, `C:\\...`, or backslash-separated paths.
+- Treat this project as developed in a Unix-like environment: WSL, macOS, or Linux are all valid.
+- Use native Unix paths for the active environment, for example `/home/yvan/projects/openclaw-long-task-kit` on WSL/Linux.
+- Do not use Windows paths such as `\\wsl$\\...`, `C:\\...`, or backslash-separated paths when working from a Unix-like shell.
 - Use bash-compatible commands and tooling.
-- Do not use PowerShell, `cmd.exe`, `.bat`, or other Windows-specific commands.
-- If the current shell is not WSL/Linux, stop and switch to WSL before making changes.
+- Do not use PowerShell, `cmd.exe`, `.bat`, or other Windows-specific commands for repository work.
+- If the current shell is a Windows shell rather than WSL/macOS/Linux, stop and switch to a Unix-like shell before making changes.
 
 ## Repository Layout
 
