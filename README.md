@@ -34,6 +34,7 @@ The current CLI surface matches `ltk --help`:
 - `init`: create a task state file and bootstrap workspace control files
 - `lock`: acquire, renew, or release the task control lock
 - `logs`: tail upstream gateway logs and record wrapper diagnostics
+- `notify`: render wrapper-level task summaries or Telegram preview payloads
 - `pointer`: manage the active task pointer JSON file
 - `preflight`: validate state, files, approvals, cron coverage, and gateway health
 - `resume`: rerun preflight, refresh bootstrap files, append a memory note, and
