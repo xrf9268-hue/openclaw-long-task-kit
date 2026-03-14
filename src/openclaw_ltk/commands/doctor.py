@@ -13,6 +13,10 @@ from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.errors import OpenClawError
 from openclaw_ltk.logging import write_diagnostic_event
 from openclaw_ltk.openclaw_cli import OpenClawClient
+from openclaw_ltk.openclaw_config import (
+    load_openclaw_config,
+    validate_heartbeat_config,
+)
 
 
 def _nested_get(payload: object, *keys: str) -> object | None:
@@ -61,36 +65,22 @@ def _heartbeat_config_check(config: LtkConfig) -> dict[str, Any]:
         )
 
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        raw = load_openclaw_config(path)
+    except (OSError, ValueError) as exc:
         return _runtime_check(
             "heartbeat-config",
             False,
-            f"OpenClaw config at {path} is not valid JSON: {exc.msg}",
+            f"Failed to read OpenClaw config at {path}: {exc}",
             hint=hint,
             source=source,
         )
 
-    heartbeat = _nested_get(raw, "agents", "defaults", "heartbeat")
-    if not isinstance(heartbeat, dict):
+    errors = validate_heartbeat_config(raw)
+    if errors:
         return _runtime_check(
             "heartbeat-config",
             False,
-            f"Missing agents.defaults.heartbeat block in {path}",
-            hint=hint,
-            source=source,
-        )
-
-    every = heartbeat.get("every")
-    target = heartbeat.get("target")
-    if not every or not target:
-        return _runtime_check(
-            "heartbeat-config",
-            False,
-            (
-                f"Heartbeat config in {path} must include non-empty 'every' "
-                "and 'target' values"
-            ),
+            f"Heartbeat config in {path} is invalid: {'; '.join(errors)}",
             hint=hint,
             source=source,
         )

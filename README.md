@@ -14,7 +14,7 @@ official `openclaw` CLI instead of reimplementing the gateway/runtime.
 - runs control-plane health and runtime checks through `ltk preflight`,
   `ltk doctor`, `ltk status`, and `ltk resume`
 - records local diagnostics JSONL under the OpenClaw state directory
-- exposes config-only helpers such as `ltk webhooks`
+- exposes config-only helpers such as `ltk heartbeat` and `ltk webhooks`
 
 ## What Still Belongs to OpenClaw
 
@@ -30,16 +30,19 @@ The current CLI surface matches `ltk --help`:
 
 - `close`: remove cron jobs and heartbeat entries for a task
 - `doctor`: run upstream doctor plus local runtime checks
+- `heartbeat`: print, validate, or minimally upsert heartbeat config helpers
 - `init`: create a task state file and bootstrap workspace control files
 - `lock`: acquire, renew, or release the task control lock
 - `logs`: tail upstream gateway logs and record wrapper diagnostics
+- `memory`: append manual notes or list daily memory files
+- `notify`: render wrapper-level task summaries or Telegram preview payloads
 - `pointer`: manage the active task pointer JSON file
 - `preflight`: validate state, files, approvals, cron coverage, and gateway health
 - `resume`: rerun preflight, refresh bootstrap files, append a memory note, and
   surface continuation/exhaustion policy results
 - `status`: print task status plus deadman, continuation, exhaustion, and validation
 - `watchdog`: manage watchdog cron jobs
-- `webhooks`: print minimal webhook config and validate local hook settings
+- `webhooks`: print config, validate hooks, and render payload/curl previews
 
 ## Workspace Files
 

@@ -60,3 +60,10 @@ def append_daily_memory_note(
     updated = f"{existing}{separator}- {now_local.isoformat()} {note}\n"
     atomic_write_text(daily_path, updated)
     return daily_path
+
+
+def list_daily_memory_files(config: LtkConfig) -> list[Path]:
+    """Return daily memory files sorted newest-first by filename."""
+    if not config.memory_dir.exists():
+        return []
+    return sorted(config.memory_dir.glob("*.md"), reverse=True)
