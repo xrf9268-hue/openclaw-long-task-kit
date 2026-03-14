@@ -17,7 +17,11 @@ from openclaw_ltk.openclaw_config import (
 )
 
 
-def _minimal_heartbeat_config(*, every: str = "10m", target: str = "last") -> dict[str, Any]:
+def _minimal_heartbeat_config(
+    *,
+    every: str = "10m",
+    target: str = "last",
+) -> dict[str, Any]:
     return {
         "agents": {
             "defaults": {
@@ -41,7 +45,13 @@ def _load_existing_config(path: Path) -> dict[str, Any]:
 def heartbeat_cmd(ctx: click.Context) -> None:
     """Inspect or minimally update heartbeat-related OpenClaw config."""
     if ctx.invoked_subcommand is None:
-        click.echo(json.dumps(_minimal_heartbeat_config(), ensure_ascii=False, indent=2))
+        click.echo(
+            json.dumps(
+                _minimal_heartbeat_config(),
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
 
 
 @heartbeat_cmd.command("validate")

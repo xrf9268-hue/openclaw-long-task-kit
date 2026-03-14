@@ -12,11 +12,11 @@ from openclaw_ltk.clock import now_utc_iso
 from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.errors import OpenClawError
 from openclaw_ltk.logging import write_diagnostic_event
+from openclaw_ltk.openclaw_cli import OpenClawClient
 from openclaw_ltk.openclaw_config import (
     load_openclaw_config,
     validate_heartbeat_config,
 )
-from openclaw_ltk.openclaw_cli import OpenClawClient
 
 
 def _nested_get(payload: object, *keys: str) -> object | None:

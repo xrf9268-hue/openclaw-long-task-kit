@@ -57,7 +57,10 @@ def test_heartbeat_validate_reports_missing_target(
     result = runner.invoke(main, ["heartbeat", "validate"])
 
     assert result.exit_code == 1
-    assert "agents.defaults.heartbeat.target must be a non-empty string" in result.output
+    assert (
+        "agents.defaults.heartbeat.target must be a non-empty string"
+        in result.output
+    )
 
 
 def test_heartbeat_apply_upserts_config_without_clobbering_other_settings(
