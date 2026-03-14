@@ -64,11 +64,12 @@ The current CLI surface matches `ltk --help`:
 
 ## Verification
 
-From the repository root inside WSL:
+From the repository root in a Unix-like shell (WSL/macOS/Linux), after
+setting up the local virtual environment:
 
 ```bash
-PYTHONPATH=src /home/yvan/projects/openclaw-long-task-kit/.venv/bin/ltk --help
-/home/yvan/projects/openclaw-long-task-kit/.venv/bin/pytest -q
-/home/yvan/projects/openclaw-long-task-kit/.venv/bin/ruff check .
-/home/yvan/projects/openclaw-long-task-kit/.venv/bin/mypy --strict src tests
+PYTHONPATH=src .venv/bin/ltk --help
+.venv/bin/pytest -q
+.venv/bin/ruff check .
+.venv/bin/mypy --strict src tests
 ```
