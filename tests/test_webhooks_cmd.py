@@ -52,3 +52,66 @@ def test_webhooks_validate_reports_missing_token(
 
     assert result.exit_code == 1
     assert "hooks.token is required when hooks.enabled=true" in result.output
+
+
+def test_webhooks_payload_renders_agent_event_json() -> None:
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "webhooks",
+            "payload",
+            "--event",
+            "agent",
+            "--task-id",
+            "task-1",
+            "--status",
+            "active",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload == {
+        "event": "agent",
+        "task_id": "task-1",
+        "status": "active",
+    }
+
+
+def test_webhooks_curl_uses_existing_config_values(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = _write_openclaw_config(
+        tmp_path,
+        {
+            "hooks": {
+                "enabled": True,
+                "token": "shared-secret",
+                "path": "/hooks",
+            }
+        },
+    )
+    monkeypatch.setenv("LTK_OPENCLAW_CONFIG_PATH", str(config_path))
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "webhooks",
+            "curl",
+            "--event",
+            "agent",
+            "--task-id",
+            "task-1",
+            "--status",
+            "paused",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "curl -X POST" in result.output
+    assert "http://127.0.0.1:3456/hooks/agent" in result.output
+    assert "Authorization: Bearer shared-secret" in result.output
+    assert '"task_id": "task-1"' in result.output

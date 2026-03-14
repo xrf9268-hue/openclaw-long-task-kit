@@ -40,7 +40,7 @@ The current CLI surface matches `ltk --help`:
   surface continuation/exhaustion policy results
 - `status`: print task status plus deadman, continuation, exhaustion, and validation
 - `watchdog`: manage watchdog cron jobs
-- `webhooks`: print minimal webhook config and validate local hook settings
+- `webhooks`: print config, validate hooks, and render payload/curl previews
 
 ## Workspace Files
 
