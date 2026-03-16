@@ -6,10 +6,10 @@ import re
 from dataclasses import dataclass
 
 # Matches /home/<user> or /Users/<user>
-_HOME_PATH_RE = re.compile(r"/(?:home|Users)/\w+")
+_HOME_PATH_RE = re.compile(r"/(?:home|Users)/[\w.\-]+")
 
 # Matches Bearer <token>
-_BEARER_RE = re.compile(r"(Bearer\s+)\S+")
+_BEARER_RE = re.compile(r"(Bearer\s+)\S+", re.IGNORECASE)
 
 # Matches known secret-like key=value or key: value patterns
 _KEY_VALUE_RE = re.compile(

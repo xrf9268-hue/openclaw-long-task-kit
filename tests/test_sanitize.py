@@ -25,6 +25,18 @@ class TestRedactHomePaths:
         assert "~/a.py" in result
         assert "~/b.py" in result
 
+    def test_username_with_hyphen(self) -> None:
+        text = "/home/john-doe/projects/ltk"
+        result = sanitize(text)
+        assert "/home/john-doe" not in result
+        assert "~/projects/ltk" in result
+
+    def test_username_with_dot(self) -> None:
+        text = "/Users/j.smith/.config/openclaw"
+        result = sanitize(text)
+        assert "/Users/j.smith" not in result
+        assert "~/.config/openclaw" in result
+
     def test_preserves_non_home_paths(self) -> None:
         text = "Binary at /usr/local/bin/openclaw"
         result = sanitize(text)
@@ -43,6 +55,11 @@ class TestRedactTokens:
         result = sanitize(text)
         assert "sk-ant-api03-abc123xyz" not in result
         assert "Bearer" in result
+
+    def test_bearer_case_insensitive(self) -> None:
+        text = "authorization: bearer sk-ant-secret"
+        result = sanitize(text)
+        assert "sk-ant-secret" not in result
 
     def test_github_pat(self) -> None:
         text = "token: ghp_1234567890abcdef"
