@@ -1,4 +1,4 @@
-"""Tests for policy modules (continuation, deadman, exhaustion)."""
+"""Tests for policy modules (continuation, deadman, exhaustion, progression)."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from openclaw_ltk.policies.continuation import (
 )
 from openclaw_ltk.policies.deadman import check_deadman
 from openclaw_ltk.policies.exhaustion import evaluate_exhaustion
+from openclaw_ltk.policies.progression import check_progression_stall
 
 # ---------------------------------------------------------------------------
 # continuation
@@ -116,3 +117,81 @@ class TestExhaustionAbort:
         sample_state_data["retry_count"] = 5
         result = evaluate_exhaustion(sample_state_data)
         assert result.action == "abort"
+
+
+# ---------------------------------------------------------------------------
+# progression stall detection (issue #13)
+# ---------------------------------------------------------------------------
+
+
+class TestProgressionStallDetected:
+    def test_preflight_passed_but_phase_still_preflight(self) -> None:
+        state: dict[str, Any] = {
+            "phase": "preflight",
+            "preflight_status": "passed",
+            "preflight": {"overall": "PASS"},
+        }
+        result = check_progression_stall(state)
+        assert result.stalled is True
+        assert "phase" in result.reason.lower()
+
+    def test_preflight_passed_with_stale_next_step(self) -> None:
+        state: dict[str, Any] = {
+            "phase": "preflight",
+            "preflight_status": "passed",
+            "next_step": "repair and rerun preflight",
+        }
+        result = check_progression_stall(state)
+        assert result.stalled is True
+        assert "next_step" in result.reason.lower() or "phase" in result.reason.lower()
+
+    def test_suggested_repair_mentions_phase_update(self) -> None:
+        state: dict[str, Any] = {
+            "phase": "preflight",
+            "preflight_status": "passed",
+        }
+        result = check_progression_stall(state)
+        assert "phase" in result.suggested_action.lower()
+
+
+class TestProgressionNoStall:
+    def test_phase_advanced_beyond_preflight(self) -> None:
+        state: dict[str, Any] = {
+            "phase": "research",
+            "preflight_status": "passed",
+        }
+        result = check_progression_stall(state)
+        assert result.stalled is False
+
+    def test_preflight_not_yet_passed(self) -> None:
+        state: dict[str, Any] = {
+            "phase": "preflight",
+            "preflight_status": "failed",
+        }
+        result = check_progression_stall(state)
+        assert result.stalled is False
+
+    def test_no_preflight_status(self) -> None:
+        state: dict[str, Any] = {
+            "phase": "preflight",
+        }
+        result = check_progression_stall(state)
+        assert result.stalled is False
+
+    def test_no_phase(self) -> None:
+        state: dict[str, Any] = {
+            "preflight_status": "passed",
+        }
+        result = check_progression_stall(state)
+        assert result.stalled is False
+
+    def test_terminal_status_not_stalled(self) -> None:
+        """Closed/done/failed tasks should not report stall."""
+        for status in ("closed", "done", "failed"):
+            state: dict[str, Any] = {
+                "phase": "preflight",
+                "preflight_status": "passed",
+                "status": status,
+            }
+            result = check_progression_stall(state)
+            assert result.stalled is False, f"status={status} should not stall"

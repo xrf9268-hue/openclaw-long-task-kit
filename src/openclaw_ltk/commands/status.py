@@ -18,6 +18,10 @@ from openclaw_ltk.policies.exhaustion import (
     evaluate_exhaustion,
     format_exhaustion_summary,
 )
+from openclaw_ltk.policies.progression import (
+    check_progression_stall,
+    format_progression_summary,
+)
 from openclaw_ltk.schema import validate_state
 from openclaw_ltk.state import StateFile
 
@@ -81,6 +85,8 @@ def status_cmd(state_path: str, brief: bool) -> None:
     click.echo(f"Deadman: {deadman.status} — {deadman.message}")
     click.echo(format_continuation_summary(continuation))
     click.echo(format_exhaustion_summary(exhaustion))
+    progression = check_progression_stall(data)
     n_err = len(validation.errors)
     n_warn = len(validation.warnings)
     click.echo(f"Validation: {val_label} ({n_err} errors, {n_warn} warnings)")
+    click.echo(format_progression_summary(progression))
