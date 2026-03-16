@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from openclaw_ltk.generators.agents_directive import generate_agents_directive
 from openclaw_ltk.generators.boot_entry import generate_boot_entry
 from openclaw_ltk.generators.cron_matrix import (
@@ -68,6 +70,16 @@ class TestBuildClosureCheckSpec:
         assert spec["schedule"]["kind"] == "at"
         assert spec["deleteAfterRun"] is True
 
+    def test_rejects_none_at_iso(self) -> None:
+        with pytest.raises(ValueError, match="absolute ISO 8601"):
+            build_closure_check_spec("task-1", duration_minutes=60, at_iso=None)
+
+    def test_rejects_relative_placeholder(self) -> None:
+        with pytest.raises(ValueError, match="absolute ISO 8601"):
+            build_closure_check_spec(
+                "task-1", duration_minutes=60, at_iso="<start_time> + 90min"
+            )
+
 
 class TestBuildAllSpecs:
     def test_returns_four(self) -> None:
@@ -83,6 +95,15 @@ class TestBuildAllSpecs:
         assert "continuation-task-1" in names
         assert "deadman-task-1" in names
         assert "closure-check-task-1" in names
+
+    def test_rejects_none_closure_at_iso(self) -> None:
+        with pytest.raises(ValueError, match="absolute ISO 8601"):
+            build_all_specs(
+                task_id="task-1",
+                duration_minutes=60,
+                watchdog_at_iso="2026-03-13T12:00:00+08:00",
+                closure_at_iso=None,
+            )
 
 
 # ---------------------------------------------------------------------------
