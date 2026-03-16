@@ -15,8 +15,7 @@ from openclaw_ltk.errors import StateFileError
 from openclaw_ltk.openclaw_cli import OpenClawClient
 from openclaw_ltk.schema import (
     nested_get,
-    validate_control_plane,
-    validate_required_fields,
+    validate_state,
 )
 from openclaw_ltk.state import StateFile
 
@@ -25,20 +24,14 @@ from openclaw_ltk.state import StateFile
 # ---------------------------------------------------------------------------
 
 
-def check_required_fields(state: dict[str, Any]) -> tuple[bool, str]:
-    """Verify all required top-level fields are present and non-empty."""
-    missing = validate_required_fields(state)
-    if missing:
-        return False, f"missing fields: {', '.join(missing)}"
-    return True, "all required fields present"
-
-
-def check_control_plane(state: dict[str, Any]) -> tuple[bool, str]:
-    """Verify the control_plane block is structurally valid."""
-    issues = validate_control_plane(state)
-    if issues:
-        return False, "; ".join(issues)
-    return True, "control_plane valid"
+def check_state_validation(state: dict[str, Any]) -> tuple[bool, str]:
+    """Run unified state validation (required fields + control plane + warnings)."""
+    result = validate_state(state)
+    if not result.valid:
+        return False, "; ".join(result.errors)
+    if result.warnings:
+        return True, f"valid ({len(result.warnings)} warning(s))"
+    return True, "state valid"
 
 
 def check_cron_coverage(
@@ -166,14 +159,9 @@ _CheckSource = Callable[[LtkConfig], str] | str
 
 _CHECKS: list[tuple[str, _CheckSource, _CheckFn]] = [
     (
-        "required-fields",
+        "state-validation",
         "state file",
-        lambda state, config, cron, openclaw: check_required_fields(state),
-    ),
-    (
-        "control-plane",
-        "state file",
-        lambda state, config, cron, openclaw: check_control_plane(state),
+        lambda state, config, cron, openclaw: check_state_validation(state),
     ),
     (
         "cron-coverage",

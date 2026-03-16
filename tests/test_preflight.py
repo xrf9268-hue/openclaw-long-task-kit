@@ -13,41 +13,47 @@ from openclaw_ltk.cli import main
 from openclaw_ltk.commands.preflight import (
     check_active_pointer,
     check_child_checkpoint,
-    check_control_plane,
     check_cron_coverage,
     check_exec_approvals,
     check_gateway_health,
     check_heartbeat,
-    check_required_fields,
+    check_state_validation,
 )
 from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.cron import CronJob
 from openclaw_ltk.generators.heartbeat_entry import inject_heartbeat_entry
 
 
-class TestCheckRequiredFields:
+class TestCheckStateValidation:
     def test_pass(self, sample_state_data: dict[str, Any]) -> None:
-        ok, _ = check_required_fields(sample_state_data)
+        ok, _ = check_state_validation(sample_state_data)
         assert ok is True
 
     def test_fail_missing_task_id(self, sample_state_data: dict[str, Any]) -> None:
         del sample_state_data["task_id"]
-        ok, detail = check_required_fields(sample_state_data)
+        ok, detail = check_state_validation(sample_state_data)
         assert ok is False
         assert "task_id" in detail
 
+    def test_fail_invalid_control_plane(
+        self, sample_state_data: dict[str, Any]
+    ) -> None:
+        sample_state_data["control_plane"] = "not-a-dict"
+        ok, detail = check_state_validation(sample_state_data)
+        assert ok is False
+        assert "control_plane" in detail
 
-class TestCheckControlPlane:
-    def test_pass_with_control_plane(self, sample_state_data: dict[str, Any]) -> None:
+    def test_pass_with_valid_control_plane(
+        self, sample_state_data: dict[str, Any]
+    ) -> None:
         sample_state_data["control_plane"] = {"lock": {}}
-        ok, _ = check_control_plane(sample_state_data)
+        ok, _ = check_state_validation(sample_state_data)
         assert ok is True
 
     def test_pass_without_control_plane(
         self, sample_state_data: dict[str, Any]
     ) -> None:
-        # Optional field — absence should not fail.
-        ok, _ = check_control_plane(sample_state_data)
+        ok, _ = check_state_validation(sample_state_data)
         assert ok is True
 
 
