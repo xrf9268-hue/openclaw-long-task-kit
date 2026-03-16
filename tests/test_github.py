@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 from http.client import HTTPResponse
+from io import BytesIO
 from typing import Any
 from unittest.mock import MagicMock, patch
+from urllib.error import HTTPError as UrllibHTTPError
 
 import pytest
 
@@ -92,18 +94,30 @@ class TestCreateIssue:
 
     def test_auth_failure_raises(self) -> None:
         client = GitHubClient(token="ghp_bad")
-        resp = _mock_response({"message": "Bad credentials"}, status=401)
+        err = UrllibHTTPError(
+            "https://api.github.com/repos/o/r/issues",
+            401,
+            "Unauthorized",
+            {},  # type: ignore[arg-type]
+            BytesIO(json.dumps({"message": "Bad credentials"}).encode()),
+        )
         with (
-            patch("urllib.request.urlopen", return_value=resp),
+            patch("urllib.request.urlopen", side_effect=err),
             pytest.raises(GitHubError, match="401"),
         ):
             client.create_issue("o/r", title="Bug")
 
     def test_rate_limit_raises(self) -> None:
         client = GitHubClient(token="ghp_test")
-        resp = _mock_response({"message": "API rate limit exceeded"}, status=403)
+        err = UrllibHTTPError(
+            "https://api.github.com/repos/o/r/issues",
+            403,
+            "Forbidden",
+            {},  # type: ignore[arg-type]
+            BytesIO(json.dumps({"message": "API rate limit exceeded"}).encode()),
+        )
         with (
-            patch("urllib.request.urlopen", return_value=resp),
+            patch("urllib.request.urlopen", side_effect=err),
             pytest.raises(GitHubError, match="rate limit"),
         ):
             client.create_issue("o/r", title="Bug")
@@ -134,9 +148,15 @@ class TestCreateComment:
 
     def test_not_found_raises(self) -> None:
         client = GitHubClient(token="ghp_test")
-        resp = _mock_response({"message": "Not Found"}, status=404)
+        err = UrllibHTTPError(
+            "https://api.github.com/repos/o/r/issues/999/comments",
+            404,
+            "Not Found",
+            {},  # type: ignore[arg-type]
+            BytesIO(json.dumps({"message": "Not Found"}).encode()),
+        )
         with (
-            patch("urllib.request.urlopen", return_value=resp),
+            patch("urllib.request.urlopen", side_effect=err),
             pytest.raises(GitHubError, match="404"),
         ):
             client.create_comment("o/r", issue_number=999, body="hi")

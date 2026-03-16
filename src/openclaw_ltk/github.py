@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import urllib.error
 import urllib.request
 from typing import Any
 
@@ -64,19 +65,20 @@ class GitHubClient:
                 "X-GitHub-Api-Version": "2022-11-28",
             },
         )
-        with urllib.request.urlopen(req) as resp:
-            resp_body: dict[str, Any] = json.loads(resp.read())
-            status: int = resp.status
-        if status == 403 and "rate limit" in resp_body.get("message", ""):
-            raise GitHubError(
-                message=f"GitHub API rate limit exceeded (403): "
-                f"{resp_body.get('message', '')}"
-            )
-        if status >= 400:
-            raise GitHubError(
-                message=f"GitHub API error ({status}): {resp_body.get('message', '')}"
-            )
-        return resp_body
+        try:
+            with urllib.request.urlopen(req) as resp:
+                return json.loads(resp.read())  # type: ignore[no-any-return]
+        except urllib.error.HTTPError as exc:
+            try:
+                err_body = json.loads(exc.read())
+                msg = err_body.get("message", "")
+            except (json.JSONDecodeError, OSError):
+                msg = str(exc)
+            if exc.code == 403 and "rate limit" in msg:
+                raise GitHubError(
+                    message=f"GitHub API rate limit exceeded (403): {msg}"
+                ) from exc
+            raise GitHubError(message=f"GitHub API error ({exc.code}): {msg}") from exc
 
     # ------------------------------------------------------------------
     # Public API
