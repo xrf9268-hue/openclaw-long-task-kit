@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 
@@ -37,3 +39,10 @@ class CheckResult:
         if self.source is not None:
             d["source"] = self.source
         return d
+
+
+def emit(path: Path, event: DiagnosticEvent) -> None:
+    """Append one diagnostic event to the JSONL log file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(event.to_dict(), ensure_ascii=False) + "\n")

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from openclaw_ltk.diagnostics import CheckResult, DiagnosticEvent
+import json
+from pathlib import Path
+
+from openclaw_ltk.diagnostics import CheckResult, DiagnosticEvent, emit
 
 
 class TestDiagnosticEvent:
@@ -54,3 +57,24 @@ class TestCheckResult:
         d = cr.to_dict()
         assert "hint" not in d
         assert "source" not in d
+
+
+class TestEmit:
+    def test_creates_parent_dirs_and_appends(self, tmp_path: Path) -> None:
+        log_path = tmp_path / "sub" / "diagnostics.jsonl"
+        ev = DiagnosticEvent(ts="t1", event="e1", data={"k": "v"})
+        emit(log_path, ev)
+        lines = log_path.read_text(encoding="utf-8").strip().splitlines()
+        assert len(lines) == 1
+        parsed = json.loads(lines[0])
+        assert parsed["event"] == "e1"
+        assert parsed["k"] == "v"
+
+    def test_appends_multiple_events(self, tmp_path: Path) -> None:
+        log_path = tmp_path / "diagnostics.jsonl"
+        emit(log_path, DiagnosticEvent(ts="t1", event="first"))
+        emit(log_path, DiagnosticEvent(ts="t2", event="second"))
+        lines = log_path.read_text(encoding="utf-8").strip().splitlines()
+        assert len(lines) == 2
+        assert json.loads(lines[0])["event"] == "first"
+        assert json.loads(lines[1])["event"] == "second"
