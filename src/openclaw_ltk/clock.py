@@ -6,12 +6,12 @@ from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 
-def now(tz_name: str = "Asia/Shanghai") -> datetime:
+def now(tz_name: str = "UTC") -> datetime:
     """Return current time in the given timezone."""
     return datetime.now(tz=ZoneInfo(tz_name))
 
 
-def now_iso(tz_name: str = "Asia/Shanghai") -> str:
+def now_iso(tz_name: str = "UTC") -> str:
     """Return current time as an ISO format string in the given timezone."""
     return now(tz_name).isoformat()
 
