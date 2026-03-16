@@ -133,10 +133,24 @@ def build_closure_check_spec(
     """Build a closure-check cron spec that fires once after task completion.
 
     The fire time is *at_iso* + *duration_minutes* + 30-minute buffer.
-    If *at_iso* is omitted the schedule falls back to a relative offset
-    expressed as a plain-text note (the caller must supply a concrete time
-    before registering the job with OpenClaw).
+
+    Raises
+    ------
+    ValueError
+        If *at_iso* is ``None`` or not a valid absolute ISO 8601 timestamp.
     """
+    if at_iso is None:
+        raise ValueError(
+            "at_iso must be an absolute ISO 8601 timestamp, got None"
+        )
+
+    try:
+        start_dt = _parse_iso(at_iso)
+    except (ValueError, TypeError) as exc:
+        raise ValueError(
+            f"at_iso must be an absolute ISO 8601 timestamp, got {at_iso!r}"
+        ) from exc
+
     name = f"closure-check-{task_id}"
     text = (
         f"[LTK closure-check] Task '{task_id}' should have completed by now. "
@@ -144,21 +158,9 @@ def build_closure_check_spec(
         "cleanup has been performed, and the heartbeat entry is up to date."
     )
 
-    if at_iso is not None:
-        start_dt = _parse_iso(at_iso)
-        fire_dt = start_dt + timedelta(minutes=duration_minutes + 30)
-        schedule: dict[str, Any] = {"kind": "at", "at": _to_iso(fire_dt)}
-        meta_note = f"Fires at start({at_iso}) + {duration_minutes}min + 30min buffer."
-    else:
-        # Relative fallback — the consumer must materialise this before use.
-        schedule = {
-            "kind": "at",
-            "at": f"<start_time> + {duration_minutes + 30}min",
-        }
-        meta_note = (
-            f"Relative placeholder: replace 'at' with a concrete ISO timestamp "
-            f"equal to task start + {duration_minutes + 30} minutes."
-        )
+    fire_dt = start_dt + timedelta(minutes=duration_minutes + 30)
+    schedule: dict[str, Any] = {"kind": "at", "at": _to_iso(fire_dt)}
+    meta_note = f"Fires at start({at_iso}) + {duration_minutes}min + 30min buffer."
 
     return {
         "name": name,
@@ -208,7 +210,7 @@ def build_all_specs(
         Polling cadence for the deadman job (default: 20).
     closure_at_iso:
         ISO-8601 start timestamp used to compute the closure-check fire time.
-        If omitted a relative placeholder is embedded in the spec.
+        Must be an absolute ISO 8601 timestamp; raises ``ValueError`` if omitted.
     telegram_chat_id:
         Optional Telegram chat ID stored in the watchdog meta for alert routing.
     """
