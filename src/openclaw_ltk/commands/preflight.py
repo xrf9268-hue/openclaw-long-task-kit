@@ -273,6 +273,7 @@ def preflight_cmd(state_path: str, write_back: bool) -> None:
     if write_back:
         try:
             with sf.locked_update() as data:
+                data["preflight_status"] = "passed" if overall == "PASS" else "failed"
                 data["preflight"] = {
                     "overall": overall,
                     "checks": {

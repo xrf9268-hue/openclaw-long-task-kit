@@ -331,3 +331,48 @@ class TestPreflightCmd:
         checks = written["preflight"]["checks"]
         assert checks["gateway-health"]["source"] == "openclaw health --json"
         assert checks["exec-approvals"]["source"] == str(config.exec_approvals_path)
+
+    def test_write_back_sets_preflight_status(
+        self, tmp_path: Path, sample_state_data: dict[str, Any]
+    ) -> None:
+        """Issue #7: --write-back should set preflight_status marker."""
+        sample_state_data["control_plane"] = {"cron_jobs": []}
+        state_file = _write_state(tmp_path, sample_state_data)
+
+        config = LtkConfig(
+            workspace=tmp_path,
+            openclaw_state_dir=tmp_path / "host-state",
+        )
+        inject_heartbeat_entry(
+            config.heartbeat_path, "t", "T", "active", "G", "2026-01-01"
+        )
+        config.pointer_path.parent.mkdir(parents=True, exist_ok=True)
+        config.pointer_path.write_text('{"task_id": "t1"}', encoding="utf-8")
+        config.exec_approvals_path.parent.mkdir(parents=True, exist_ok=True)
+        config.exec_approvals_path.write_text("{}", encoding="utf-8")
+
+        mock_cron = MagicMock()
+        mock_cron.list_jobs.return_value = []
+        mock_openclaw = MagicMock()
+        mock_openclaw.health.return_value = {"ok": True}
+
+        runner = CliRunner()
+        with (
+            patch("openclaw_ltk.commands.preflight.CronClient", return_value=mock_cron),
+            patch(
+                "openclaw_ltk.commands.preflight.OpenClawClient",
+                return_value=mock_openclaw,
+            ),
+        ):
+            result = runner.invoke(
+                main,
+                ["preflight", "--state", str(state_file), "--write-back"],
+                env={
+                    "LTK_WORKSPACE": str(tmp_path),
+                    "OPENCLAW_STATE_DIR": str(config.openclaw_state_dir),
+                },
+            )
+
+        assert result.exit_code == 0
+        written = json.loads(state_file.read_text(encoding="utf-8"))
+        assert written["preflight_status"] == "passed"
