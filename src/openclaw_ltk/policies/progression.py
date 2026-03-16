@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 _PREFLIGHT_KEYWORDS = ("preflight", "pre-flight", "pre flight")
+_TERMINAL_STATUSES = frozenset({"closed", "done", "failed", "cancelled"})
 
 
 @dataclass
@@ -44,6 +45,14 @@ def check_progression_stall(state: dict[str, Any]) -> ProgressionResult:
         preflight_overall = str(preflight_block.get("overall", ""))
 
     preflight_passed = preflight_status == "passed" or preflight_overall == "PASS"
+
+    # Terminal tasks cannot be stalled.
+    if str(state.get("status", "")).lower() in _TERMINAL_STATUSES:
+        return ProgressionResult(
+            stalled=False,
+            reason="Task has terminal status; no stall applicable.",
+            suggested_action="No action needed.",
+        )
 
     if not preflight_passed:
         return ProgressionResult(

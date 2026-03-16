@@ -184,3 +184,14 @@ class TestProgressionNoStall:
         }
         result = check_progression_stall(state)
         assert result.stalled is False
+
+    def test_terminal_status_not_stalled(self) -> None:
+        """Closed/done/failed tasks should not report stall."""
+        for status in ("closed", "done", "failed"):
+            state: dict[str, Any] = {
+                "phase": "preflight",
+                "preflight_status": "passed",
+                "status": status,
+            }
+            result = check_progression_stall(state)
+            assert result.stalled is False, f"status={status} should not stall"
