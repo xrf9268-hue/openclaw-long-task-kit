@@ -41,4 +41,5 @@ dev = [
     "pytest-cov>=4.0",
     "mypy>=1.0",
     "ruff>=0.4",
+    "pip-audit>=2.7",
 ]
