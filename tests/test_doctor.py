@@ -41,12 +41,15 @@ class TestDoctorCmd:
         mock_openclaw.doctor.return_value = {"ok": True, "checks": []}
 
         runner = CliRunner()
-        with patch(
-            "openclaw_ltk.commands.doctor.OpenClawClient",
-            return_value=mock_openclaw,
-        ), patch(
-            "platform.system",
-            return_value="Darwin",
+        with (
+            patch(
+                "openclaw_ltk.commands.doctor.OpenClawClient",
+                return_value=mock_openclaw,
+            ),
+            patch(
+                "platform.system",
+                return_value="Darwin",
+            ),
         ):
             result = runner.invoke(main, ["doctor"])
 
@@ -84,12 +87,15 @@ class TestDoctorCmd:
         mock_openclaw.doctor.return_value = {"ok": True, "checks": ["gateway"]}
 
         runner = CliRunner()
-        with patch(
-            "openclaw_ltk.commands.doctor.OpenClawClient",
-            return_value=mock_openclaw,
-        ), patch(
-            "platform.system",
-            return_value="Darwin",
+        with (
+            patch(
+                "openclaw_ltk.commands.doctor.OpenClawClient",
+                return_value=mock_openclaw,
+            ),
+            patch(
+                "platform.system",
+                return_value="Darwin",
+            ),
         ):
             result = runner.invoke(main, ["doctor", "--repair", "--deep", "--json"])
 
@@ -156,12 +162,15 @@ class TestDoctorCmd:
         mock_openclaw.gateway_status.return_value = {"service": {"manager": "launchd"}}
 
         runner = CliRunner()
-        with patch(
-            "openclaw_ltk.commands.doctor.OpenClawClient",
-            return_value=mock_openclaw,
-        ), patch(
-            "platform.system",
-            return_value="Darwin",
+        with (
+            patch(
+                "openclaw_ltk.commands.doctor.OpenClawClient",
+                return_value=mock_openclaw,
+            ),
+            patch(
+                "platform.system",
+                return_value="Darwin",
+            ),
         ):
             result = runner.invoke(main, ["doctor", "--json"])
 
@@ -202,12 +211,15 @@ class TestDoctorCmd:
         }
 
         runner = CliRunner()
-        with patch(
-            "openclaw_ltk.commands.doctor.OpenClawClient",
-            return_value=mock_openclaw,
-        ), patch(
-            "platform.system",
-            return_value="Linux",
+        with (
+            patch(
+                "openclaw_ltk.commands.doctor.OpenClawClient",
+                return_value=mock_openclaw,
+            ),
+            patch(
+                "platform.system",
+                return_value="Linux",
+            ),
         ):
             result = runner.invoke(main, ["doctor", "--json"])
 
