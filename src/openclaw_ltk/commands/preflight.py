@@ -188,9 +188,7 @@ _CHECKS: list[tuple[str, _CheckSource, _CheckFn]] = [
     (
         "gateway-health",
         "openclaw health --json",
-        lambda state, config, cron, openclaw: check_gateway_health(
-            config, openclaw
-        ),
+        lambda state, config, cron, openclaw: check_gateway_health(config, openclaw),
     ),
     (
         "child-checkpoint",

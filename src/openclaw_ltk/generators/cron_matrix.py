@@ -140,9 +140,7 @@ def build_closure_check_spec(
         If *at_iso* is ``None`` or not a valid absolute ISO 8601 timestamp.
     """
     if at_iso is None:
-        raise ValueError(
-            "at_iso must be an absolute ISO 8601 timestamp, got None"
-        )
+        raise ValueError("at_iso must be an absolute ISO 8601 timestamp, got None")
 
     try:
         start_dt = _parse_iso(at_iso)
