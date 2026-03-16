@@ -10,8 +10,8 @@ import click
 
 from openclaw_ltk.clock import now_utc_iso
 from openclaw_ltk.config import LtkConfig
+from openclaw_ltk.diagnostics import CheckResult, DiagnosticEvent, emit
 from openclaw_ltk.errors import OpenClawError
-from openclaw_ltk.logging import write_diagnostic_event
 from openclaw_ltk.openclaw_cli import OpenClawClient
 from openclaw_ltk.openclaw_config import (
     load_openclaw_config,
@@ -28,26 +28,6 @@ def _nested_get(payload: object, *keys: str) -> object | None:
     return current
 
 
-def _runtime_check(
-    name: str,
-    ok: bool,
-    detail: str,
-    *,
-    hint: str | None = None,
-    source: str | None = None,
-) -> dict[str, Any]:
-    check: dict[str, Any] = {
-        "name": name,
-        "ok": ok,
-        "detail": detail,
-    }
-    if hint is not None:
-        check["hint"] = hint
-    if source is not None:
-        check["source"] = source
-    return check
-
-
 def _heartbeat_config_check(config: LtkConfig) -> dict[str, Any]:
     path = config.openclaw_config_path
     source = str(path)
@@ -56,41 +36,41 @@ def _heartbeat_config_check(config: LtkConfig) -> dict[str, Any]:
         "so HEARTBEAT.md can drive unattended work."
     )
     if not path.exists():
-        return _runtime_check(
-            "heartbeat-config",
-            False,
-            f"OpenClaw config file not found at {path}",
+        return CheckResult(
+            name="heartbeat-config",
+            ok=False,
+            detail=f"OpenClaw config file not found at {path}",
             hint=hint,
             source=source,
-        )
+        ).to_dict()
 
     try:
         raw = load_openclaw_config(path)
     except (OSError, ValueError) as exc:
-        return _runtime_check(
-            "heartbeat-config",
-            False,
-            f"Failed to read OpenClaw config at {path}: {exc}",
+        return CheckResult(
+            name="heartbeat-config",
+            ok=False,
+            detail=f"Failed to read OpenClaw config at {path}: {exc}",
             hint=hint,
             source=source,
-        )
+        ).to_dict()
 
     errors = validate_heartbeat_config(raw)
     if errors:
-        return _runtime_check(
-            "heartbeat-config",
-            False,
-            f"Heartbeat config in {path} is invalid: {'; '.join(errors)}",
+        return CheckResult(
+            name="heartbeat-config",
+            ok=False,
+            detail=f"Heartbeat config in {path} is invalid: {'; '.join(errors)}",
             hint=hint,
             source=source,
-        )
+        ).to_dict()
 
-    return _runtime_check(
-        "heartbeat-config",
-        True,
-        f"Heartbeat config present in {path}",
+    return CheckResult(
+        name="heartbeat-config",
+        ok=True,
+        detail=f"Heartbeat config present in {path}",
         source=source,
-    )
+    ).to_dict()
 
 
 def _linux_linger_check(openclaw: OpenClawClient) -> dict[str, Any]:
@@ -101,24 +81,24 @@ def _linux_linger_check(openclaw: OpenClawClient) -> dict[str, Any]:
     try:
         status = openclaw.gateway_status()
     except OpenClawError as exc:
-        return _runtime_check(
-            "linux-linger",
-            False,
-            f"Failed to inspect gateway service state: {exc.message}",
+        return CheckResult(
+            name="linux-linger",
+            ok=False,
+            detail=f"Failed to inspect gateway service state: {exc.message}",
             hint=hint,
             source="openclaw gateway status --json",
-        )
+        ).to_dict()
 
     scope = _nested_get(status, "service", "scope")
     linger_enabled = _nested_get(status, "service", "linger_enabled")
 
     if scope == "system" or linger_enabled is True:
-        return _runtime_check(
-            "linux-linger",
-            True,
-            "Gateway persistence looks compatible with Linux 24/7 operation",
+        return CheckResult(
+            name="linux-linger",
+            ok=True,
+            detail="Gateway persistence looks compatible with Linux 24/7 operation",
             source="openclaw gateway status --json",
-        )
+        ).to_dict()
 
     if scope == "user":
         detail = (
@@ -127,13 +107,13 @@ def _linux_linger_check(openclaw: OpenClawClient) -> dict[str, Any]:
     else:
         detail = "Gateway status did not confirm lingering or a system-level service"
 
-    return _runtime_check(
-        "linux-linger",
-        False,
-        detail,
+    return CheckResult(
+        name="linux-linger",
+        ok=False,
+        detail=detail,
         hint=hint,
         source="openclaw gateway status --json",
-    )
+    ).to_dict()
 
 
 def _collect_runtime_checks(
@@ -171,17 +151,19 @@ def doctor_cmd(repair: bool, deep: bool, json_output: bool) -> None:
     try:
         payload = client.doctor(repair=repair, deep=deep)
     except OpenClawError as exc:
-        write_diagnostic_event(
+        emit(
             config.diagnostics_log_path,
-            {
-                "ts": now_utc_iso(),
-                "event": "doctor_probe_failed",
-                "command": "doctor",
-                "repair": repair,
-                "deep": deep,
-                "error": exc.message,
-                "detail": exc.detail,
-            },
+            DiagnosticEvent(
+                ts=now_utc_iso(),
+                event="doctor_probe_failed",
+                data={
+                    "command": "doctor",
+                    "repair": repair,
+                    "deep": deep,
+                    "error": exc.message,
+                    "detail": exc.detail,
+                },
+            ),
         )
         click.echo(f"ERROR: {exc.message}", err=True)
         if exc.detail:
