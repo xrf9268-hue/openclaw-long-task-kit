@@ -17,6 +17,7 @@ def main() -> None:
 # Import and register command groups.
 from openclaw_ltk.commands.close import close_cmd  # noqa: E402
 from openclaw_ltk.commands.doctor import doctor_cmd  # noqa: E402
+from openclaw_ltk.commands.github import github_cmd  # noqa: E402
 from openclaw_ltk.commands.heartbeat import heartbeat_cmd  # noqa: E402
 from openclaw_ltk.commands.init import init_cmd  # noqa: E402
 from openclaw_ltk.commands.lock import lock_cmd  # noqa: E402
@@ -35,6 +36,7 @@ main.add_command(init_cmd, "init")
 main.add_command(preflight_cmd, "preflight")
 main.add_command(close_cmd, "close")
 main.add_command(doctor_cmd, "doctor")
+main.add_command(github_cmd, "github")
 main.add_command(heartbeat_cmd, "heartbeat")
 main.add_command(lock_cmd, "lock")
 main.add_command(logs_cmd, "logs")
