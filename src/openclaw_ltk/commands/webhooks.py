@@ -20,6 +20,8 @@ def _minimal_hooks_config() -> dict[str, Any]:
             "path": "/hooks",
         }
     }
+
+
 def _validate_hooks_config(payload: dict[str, Any]) -> list[str]:
     hooks = payload.get("hooks")
     if not isinstance(hooks, dict):
