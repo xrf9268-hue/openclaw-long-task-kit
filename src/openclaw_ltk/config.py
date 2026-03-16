@@ -71,7 +71,7 @@ class LtkConfig:
     diagnostics_log_path: Path = dataclasses.field(default=Path())
 
     # IANA timezone name used for timestamps.
-    timezone: str = "Asia/Shanghai"
+    timezone: str = "UTC"
 
     # Telegram chat ID for notifications; empty string means disabled.
     telegram_chat_id: str = ""
@@ -209,7 +209,7 @@ class LtkConfig:
             exec_approvals_path=_opt_path("LTK_EXEC_APPROVALS_PATH"),
             openclaw_config_path=_opt_path("LTK_OPENCLAW_CONFIG_PATH"),
             diagnostics_log_path=_opt_path("LTK_DIAGNOSTICS_LOG_PATH"),
-            timezone=_env("LTK_TIMEZONE") or "Asia/Shanghai",
+            timezone=_env("LTK_TIMEZONE") or "UTC",
             telegram_chat_id=_env("LTK_TELEGRAM_CHAT_ID") or "",
             timeout_seconds=_opt_int("LTK_TIMEOUT_SECONDS", 1800),
             silence_budget_minutes=_opt_int("LTK_SILENCE_BUDGET_MINUTES", 10),

@@ -16,7 +16,7 @@ class TestDefaultValues:
         """Default config constructed with a workspace should have correct defaults."""
         cfg = LtkConfig(workspace=Path("/tmp/ws"))
         assert cfg.workspace == Path("/tmp/ws")
-        assert cfg.timezone == "Asia/Shanghai"
+        assert cfg.timezone == "UTC"
         assert cfg.telegram_chat_id == ""
         assert cfg.timeout_seconds == 1800
         assert cfg.silence_budget_minutes == 10

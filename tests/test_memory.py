@@ -12,7 +12,7 @@ from openclaw_ltk.memory import append_daily_memory_note, ensure_memory_files
 
 def test_ensure_memory_files_creates_index_and_daily_file(tmp_path: Path) -> None:
     config = LtkConfig(workspace=tmp_path)
-    now_local = datetime(2026, 3, 13, 9, 30, tzinfo=ZoneInfo("Asia/Shanghai"))
+    now_local = datetime(2026, 3, 13, 9, 30, tzinfo=ZoneInfo("UTC"))
 
     memory_index, daily_path = ensure_memory_files(config, now_local)
 
@@ -26,11 +26,11 @@ def test_ensure_memory_files_creates_index_and_daily_file(tmp_path: Path) -> Non
 
 def test_append_daily_memory_note_appends_custom_entry(tmp_path: Path) -> None:
     config = LtkConfig(workspace=tmp_path)
-    now_local = datetime(2026, 3, 14, 10, 15, tzinfo=ZoneInfo("Asia/Shanghai"))
+    now_local = datetime(2026, 3, 14, 10, 15, tzinfo=ZoneInfo("UTC"))
 
     daily_path = append_daily_memory_note(config, now_local, "Manual checkpoint")
 
     assert daily_path == tmp_path / "memory" / "2026-03-14.md"
     daily_text = daily_path.read_text(encoding="utf-8")
     assert "Manual checkpoint" in daily_text
-    assert "2026-03-14T10:15:00+08:00" in daily_text
+    assert "2026-03-14T10:15:00+00:00" in daily_text
