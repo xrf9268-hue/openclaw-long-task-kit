@@ -83,6 +83,45 @@ state file updates.  This mechanism has known limitations:
 **Workaround**: If you must use a network filesystem, set `LTK_WORKSPACE` to a
 local directory so that state files and lock files reside on a local disk.
 
+## Incident and Pitfall Reporting
+
+When a long-running task encounters issues, use the following workflow to
+diagnose and report the problem.
+
+### Diagnosing an Issue
+
+1. **Check task status** — run `ltk status --state <path>` to see the current
+   phase, deadman/continuation/exhaustion policy results, and validation
+   errors or warnings.
+2. **Run preflight** — `ltk preflight --state <path>` verifies required
+   fields, control plane structure, cron coverage, heartbeat presence,
+   gateway health, and exec approvals.  Any failing check points to the
+   root cause.
+3. **Review diagnostics** — local diagnostics are appended to
+   `~/.openclaw/ltk-diagnostics.jsonl`.  Use `ltk logs` to tail gateway
+   logs alongside wrapper events.
+4. **Check doctor** — `ltk doctor` runs upstream health probes and records
+   failures in the diagnostics log.
+
+### Common Pitfalls
+
+| Pitfall | Symptom | Fix |
+|---------|---------|-----|
+| Running `ltk init` without `ltk preflight` | State file exists but preflight never passed | Run `ltk preflight --state <path> --write-back` |
+| Stale heartbeat | Deadman policy reports "dead" | Run `ltk resume --state <path>` to refresh |
+| Missing exec-approvals file | Preflight fails on `exec-approvals` check | Create `~/.openclaw/exec-approvals.json` |
+| Exhausted task keeps retrying | Error count or retry count exceeds threshold | Check `ltk status` exhaustion output, then `ltk resume --state <path>` |
+| Invalid state JSON after manual edit | Preflight reports missing required fields | Fix the JSON and re-run `ltk preflight --state <path>` |
+
+### Reporting a Bug
+
+1. Gather the output of `ltk status --state <path>` and
+   `ltk preflight --state <path>`.
+2. Include relevant lines from `~/.openclaw/ltk-diagnostics.jsonl`.
+3. Open an issue on the
+   [GitHub issue tracker](https://github.com/xrf9268-hue/openclaw-long-task-kit/issues)
+   with the gathered details and steps to reproduce.
+
 ## Runtime Defaults
 
 - workspace root defaults to `~/.openclaw/workspace`
