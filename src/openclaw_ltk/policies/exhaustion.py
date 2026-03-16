@@ -37,9 +37,7 @@ def evaluate_exhaustion(
         return ExhaustionResult(
             action="pause",
             reason=f"Task status is '{status}'",
-            suggested_next_step=(
-                "Wait for resources, then resume with 'ltk resume'"
-            ),
+            suggested_next_step=("Wait for resources, then resume with 'ltk resume'"),
         )
 
     # Too many retries — give up.
