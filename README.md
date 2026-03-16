@@ -30,6 +30,8 @@ The current CLI surface matches `ltk --help`:
 
 - `close`: remove cron jobs and heartbeat entries for a task
 - `doctor`: run upstream doctor plus local runtime checks
+- `github issue create`: create a GitHub issue (`--dry-run` to preview)
+- `github comment create`: post a comment on a GitHub issue (`--dry-run` to preview)
 - `heartbeat`: print, validate, or minimally upsert heartbeat config helpers
 - `init`: create a task state file and bootstrap workspace control files
 - `lock`: acquire, renew, or release the task control lock
