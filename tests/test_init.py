@@ -150,6 +150,35 @@ class TestRunInitPreflight:
         assert len(result.errors) > 0
 
 
+class TestInitPreflightStatus:
+    """Issue #7: init should record preflight_status in state."""
+
+    def test_state_has_preflight_status(self, tmp_path: Path) -> None:
+        runner = CliRunner()
+        _run_init(runner, tmp_path)
+        state_files = list((tmp_path / "tasks" / "state").glob("*.json"))
+        data = json.loads(state_files[0].read_text())
+        assert data["preflight_status"] == "passed"
+
+    def test_state_has_preflight_results(self, tmp_path: Path) -> None:
+        runner = CliRunner()
+        _run_init(runner, tmp_path)
+        state_files = list((tmp_path / "tasks" / "state").glob("*.json"))
+        data = json.loads(state_files[0].read_text())
+        assert "preflight" in data
+        assert data["preflight"]["overall"] == "PASS"
+
+
+class TestInitPostSaveValidation:
+    """Issue #7: init should re-read saved state to verify disk integrity."""
+
+    def test_output_confirms_post_save_validation(self, tmp_path: Path) -> None:
+        runner = CliRunner()
+        result = _run_init(runner, tmp_path)
+        assert result.exit_code == 0
+        assert "post-save" in result.output.lower()
+
+
 class TestInitPreventOverwrite:
     def test_second_run_fails(self, tmp_path: Path) -> None:
         runner = CliRunner()

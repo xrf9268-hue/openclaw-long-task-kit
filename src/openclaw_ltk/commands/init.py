@@ -327,10 +327,16 @@ def init_cmd(
     click.echo("       Preflight passed.")
 
     # ------------------------------------------------------------------ #
-    # Step 8 — Write cron job IDs back into state and save                #
+    # Step 8 — Write cron job IDs, preflight results, and save            #
     # ------------------------------------------------------------------ #
     click.echo("[8/10] Writing state file.")
     data["control_plane"]["cron_jobs"] = cron_jobs
+    data["preflight_status"] = "passed" if result.valid else "failed"
+    data["preflight"] = {
+        "overall": "PASS" if result.valid else "FAIL",
+        "errors": result.errors,
+        "warnings": result.warnings,
+    }
 
     try:
         config.state_dir.mkdir(parents=True, exist_ok=True)
@@ -342,6 +348,23 @@ def init_cmd(
         sys.exit(2)
     except OSError as exc:
         click.echo(f"ERROR: Failed to write state file: {exc}")
+        sys.exit(2)
+
+    # Post-save validation: re-read the file to verify disk integrity.
+    click.echo("       Post-save validation: re-reading state file.")
+    try:
+        reloaded = state_file.load()
+        reload_result = validate_state(reloaded)
+        if not reload_result.valid:
+            click.echo(
+                "ERROR: Post-save validation failed — state file on disk is invalid:"
+            )
+            for err in reload_result.errors:
+                click.echo(f"  {err}")
+            sys.exit(2)
+        click.echo("       Post-save validation passed.")
+    except (StateFileError, OSError) as exc:
+        click.echo(f"ERROR: Post-save validation failed: {exc}")
         sys.exit(2)
 
     # ------------------------------------------------------------------ #
