@@ -38,7 +38,7 @@ def evaluate_exhaustion(
             action="pause",
             reason=f"Task status is '{status}'",
             suggested_next_step=(
-                "Wait for resources, then resume with 'ltk init --force'"
+                "Wait for resources, then resume with 'ltk resume'"
             ),
         )
 

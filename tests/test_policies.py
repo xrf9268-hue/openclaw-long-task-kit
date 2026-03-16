@@ -100,6 +100,8 @@ class TestExhaustionPause:
         sample_state_data["status"] = "exhausted"
         result = evaluate_exhaustion(sample_state_data)
         assert result.action == "pause"
+        assert "ltk resume" in result.suggested_next_step
+        assert "init --force" not in result.suggested_next_step
 
 
 class TestExhaustionEscalate:
