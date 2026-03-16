@@ -58,8 +58,7 @@ def test_heartbeat_validate_reports_missing_target(
 
     assert result.exit_code == 1
     assert (
-        "agents.defaults.heartbeat.target must be a non-empty string"
-        in result.output
+        "agents.defaults.heartbeat.target must be a non-empty string" in result.output
     )
 
 

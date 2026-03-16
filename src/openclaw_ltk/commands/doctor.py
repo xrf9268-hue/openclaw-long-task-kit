@@ -122,8 +122,7 @@ def _linux_linger_check(openclaw: OpenClawClient) -> dict[str, Any]:
 
     if scope == "user":
         detail = (
-            "Gateway appears to rely on a user-scoped service without "
-            "lingering enabled"
+            "Gateway appears to rely on a user-scoped service without lingering enabled"
         )
     else:
         detail = "Gateway status did not confirm lingering or a system-level service"
