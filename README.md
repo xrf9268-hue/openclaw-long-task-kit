@@ -55,6 +55,34 @@ The current CLI surface matches `ltk --help`:
 - `MEMORY.md`: memory index that points at daily notes
 - `memory/YYYY-MM-DD.md`: appended daily memory notes for init/resume activity
 
+## Supported Platforms
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| Linux | Supported | Primary development target |
+| macOS | Supported | Full functionality |
+| WSL 2 | Supported | Use native Linux paths, not `\\wsl$\...` |
+| WSL 1 | Limited | `fcntl` locking may not work on Windows-mounted paths (e.g. `/mnt/c/`) |
+| Native Windows | Not supported | `fcntl` module is unavailable; use WSL instead |
+| NFS mounts | Not recommended | `fcntl.flock` is not reliable over NFS; use a local filesystem for the workspace |
+
+### `fcntl` Lock Limitations
+
+LTK uses `fcntl.flock()` for sidecar lock files that serialize concurrent
+state file updates.  This mechanism has known limitations:
+
+- **NFS**: `flock` locks are local to the client machine and are not enforced
+  across NFS clients.  Running multiple LTK instances against a shared NFS
+  workspace can cause data corruption.
+- **WSL 1 + `/mnt/` paths**: Filesystem operations on Windows-mounted paths
+  may not honour POSIX locking semantics.  Keep the workspace on the native
+  Linux filesystem (e.g. `~/`).
+- **Windows (native)**: The `fcntl` module does not exist on Windows.  Use
+  WSL 2 or a Linux/macOS environment.
+
+**Workaround**: If you must use a network filesystem, set `LTK_WORKSPACE` to a
+local directory so that state files and lock files reside on a local disk.
+
 ## Runtime Defaults
 
 - workspace root defaults to `~/.openclaw/workspace`
