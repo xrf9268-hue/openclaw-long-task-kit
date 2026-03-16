@@ -38,6 +38,7 @@ The current CLI surface matches `ltk --help`:
 - `notify`: render wrapper-level task summaries or Telegram preview payloads
 - `pointer`: manage the active task pointer JSON file
 - `preflight`: validate state, files, approvals, cron coverage, and gateway health
+- `report issue`: generate a Markdown issue report from task state (sanitized by default)
 - `resume`: rerun preflight, refresh bootstrap files, append a memory note, and
   surface continuation/exhaustion policy results
 - `status`: print task status plus deadman, continuation, exhaustion, and validation
