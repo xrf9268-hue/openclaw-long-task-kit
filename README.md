@@ -108,7 +108,7 @@ diagnose and report the problem.
 | Pitfall | Symptom | Fix |
 |---------|---------|-----|
 | Running `ltk init` without `ltk preflight` | State file exists but preflight never passed | Run `ltk preflight --state <path> --write-back` |
-| Stale heartbeat | Deadman policy reports "dead" | Run `ltk resume --state <path>` to refresh |
+| Stale heartbeat | Deadman policy reports "dead" | Update `updated_at` in the state JSON to the current time, then run `ltk resume --state <path>` |
 | Missing exec-approvals file | Preflight fails on `exec-approvals` check | Create `~/.openclaw/exec-approvals.json` |
 | Exhausted task keeps retrying | Error count or retry count exceeds threshold | Check `ltk status` exhaustion output, then `ltk resume --state <path>` |
 | Invalid state JSON after manual edit | Preflight reports missing required fields | Fix the JSON and re-run `ltk preflight --state <path>` |
