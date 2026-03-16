@@ -18,3 +18,22 @@ class DiagnosticEvent:
         result: dict[str, Any] = {"ts": self.ts, "event": self.event}
         result.update(self.data)
         return result
+
+
+@dataclass(frozen=True)
+class CheckResult:
+    """Result of a single diagnostic check."""
+
+    name: str
+    ok: bool
+    detail: str
+    hint: str | None = None
+    source: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"name": self.name, "ok": self.ok, "detail": self.detail}
+        if self.hint is not None:
+            d["hint"] = self.hint
+        if self.source is not None:
+            d["source"] = self.source
+        return d

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from openclaw_ltk.diagnostics import DiagnosticEvent
+from openclaw_ltk.diagnostics import CheckResult, DiagnosticEvent
 
 
 class TestDiagnosticEvent:
@@ -29,3 +29,28 @@ class TestDiagnosticEvent:
         d = ev.to_dict()
         assert "data" not in d
         assert d["foo"] == "bar"
+
+
+class TestCheckResult:
+    def test_to_dict_minimal(self) -> None:
+        cr = CheckResult(name="heartbeat", ok=True, detail="ok")
+        d = cr.to_dict()
+        assert d == {"name": "heartbeat", "ok": True, "detail": "ok"}
+
+    def test_to_dict_with_hint_and_source(self) -> None:
+        cr = CheckResult(
+            name="linux-linger",
+            ok=False,
+            detail="no lingering",
+            hint="enable linger",
+            source="gateway status",
+        )
+        d = cr.to_dict()
+        assert d["hint"] == "enable linger"
+        assert d["source"] == "gateway status"
+
+    def test_to_dict_omits_none_hint_and_source(self) -> None:
+        cr = CheckResult(name="test", ok=True, detail="fine")
+        d = cr.to_dict()
+        assert "hint" not in d
+        assert "source" not in d
