@@ -9,9 +9,9 @@ Thanks for your interest in contributing to openclaw-long-task-kit!
 git clone https://github.com/xrf9268-hue/openclaw-long-task-kit.git
 cd openclaw-long-task-kit
 
-# Create a virtual environment and install dependencies
-python3 -m venv .venv
-.venv/bin/pip install -e ".[dev]"
+# Create a virtual environment and install dependencies (requires uv)
+pip install uv
+uv sync
 
 # Verify everything works
 .venv/bin/pytest -q

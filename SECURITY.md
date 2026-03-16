@@ -12,8 +12,8 @@ If you discover a security vulnerability in openclaw-long-task-kit, please
 report it responsibly:
 
 1. **Do not** open a public GitHub issue.
-2. Email the maintainer at the address listed in `pyproject.toml`, or use
-   GitHub's private vulnerability reporting feature on this repository.
+2. Use GitHub's **private vulnerability reporting** feature on this repository
+   (Security tab → "Report a vulnerability").
 3. Include a clear description of the vulnerability, steps to reproduce, and
    any potential impact.
 
