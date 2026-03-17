@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from openclaw_ltk import __version__
 from openclaw_ltk.generators.agents_directive import generate_agents_directive
 from openclaw_ltk.generators.boot_entry import generate_boot_entry
 from openclaw_ltk.state import atomic_write_text
@@ -13,8 +14,10 @@ from openclaw_ltk.state import atomic_write_text
 
 def _block_pattern(kind: str, task_id: str) -> re.Pattern[str]:
     escaped = re.escape(task_id)
+    # Match blocks with or without version= attribute (backward compatible).
     return re.compile(
-        rf"^<!-- ltk:{kind} task_id={escaped} -->\n.*?<!-- ltk:{kind}:end -->",
+        rf"^<!-- ltk:{kind} task_id={escaped}(?: version=\S+)? -->\n"
+        rf".*?<!-- ltk:{kind}:end -->",
         re.MULTILINE | re.DOTALL,
     )
 
@@ -54,7 +57,7 @@ def inject_boot_entry(
     )
     block = "\n".join(
         [
-            f"<!-- ltk:boot task_id={task_id} -->",
+            f"<!-- ltk:boot task_id={task_id} version={__version__} -->",
             body,
             "<!-- ltk:boot:end -->",
         ]
@@ -75,7 +78,7 @@ def inject_agents_directive(
     )
     block = "\n".join(
         [
-            f"<!-- ltk:agents task_id={task_id} -->",
+            f"<!-- ltk:agents task_id={task_id} version={__version__} -->",
             body.rstrip("\n"),
             "<!-- ltk:agents:end -->",
         ]

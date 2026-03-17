@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from openclaw_ltk import __version__
 from openclaw_ltk.state import atomic_write_text
 
 # ---------------------------------------------------------------------------
@@ -13,7 +14,7 @@ from openclaw_ltk.state import atomic_write_text
 
 _ENTRY_TEMPLATE = """\
 ## LTK: {task_id}
-<!-- ltk:meta task_id={task_id} status={status} -->
+<!-- ltk:meta task_id={task_id} status={status} version={version} -->
 - **Task**: {title}
 - **Status**: {status}
 - **Updated**: {updated_at}
@@ -38,6 +39,7 @@ def generate_entry(
         status=status,
         goal=goal,
         updated_at=updated_at,
+        version=__version__,
     )
 
 
@@ -53,6 +55,7 @@ def _block_pattern(task_id: str) -> re.Pattern[str]:
     between the opening heading and the closing comment (inclusive).
     """
     escaped = re.escape(task_id)
+    # Match blocks with or without version= attribute (backward compatible).
     return re.compile(
         rf"^## LTK: {escaped}\n.*?<!-- ltk:end -->",
         re.MULTILINE | re.DOTALL,
