@@ -132,6 +132,18 @@ diagnose and report the problem.
 - local diagnostics default to `~/.openclaw/ltk-diagnostics.jsonl`
 - host-level OpenClaw config defaults to `~/.openclaw/openclaw.json`
 
+## Releasing
+
+Releases are automated via GitHub Actions. To cut a new release:
+
+1. Update `__version__` in `src/openclaw_ltk/__init__.py` and `version` in `pyproject.toml`
+2. Update `CHANGELOG.md` — move items from `[Unreleased]` to a new version section
+3. Commit, then tag: `git tag v<version>`
+4. Push the tag: `git push origin v<version>`
+
+The release workflow verifies the tag matches the package version, runs
+tests, and creates a GitHub Release with auto-generated release notes.
+
 ## Verification
 
 From the repository root in a Unix-like shell (WSL/macOS/Linux), after
