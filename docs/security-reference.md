@@ -146,9 +146,12 @@ sanitize(text, SanitizeConfig(
 Local diagnostics are appended to `~/.openclaw/ltk-diagnostics.jsonl`
 (configurable via `LTK_DIAGNOSTICS_LOG_PATH`). This file contains:
 
-- Wrapper-level errors and health check results
-- Lock events (acquire, release, conflict)
-- Preflight and doctor check outcomes
+- Wrapper-level invocation records (`ltk logs`)
+- Error details when upstream `openclaw logs` fails
+
+Currently, diagnostics events are emitted by `ltk logs` (wrapper invocation
+and failure). Other commands such as `ltk lock` and `ltk preflight` do not
+emit diagnostics events.
 
 The file is plain-text JSONL. Protection depends on filesystem permissions of
 the `~/.openclaw/` directory.

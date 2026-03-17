@@ -7,7 +7,7 @@ LTK only builds job specs, registers them, and removes them when a task closes.
 ## Architecture
 
 ```
-ltk init / ltk resume
+ltk init
   └─► cron_matrix.py   (builds 4 job specs)
         └─► CronClient  (subprocess: openclaw cron add --json)
               └─► OpenClaw runtime  (schedules & fires jobs)
@@ -133,7 +133,8 @@ ltk watchdog renew --state tasks/state/my-task.json --at 2025-01-15T14:00:00Z
 
 ### `ltk close`
 
-Removes all declared cron jobs and the heartbeat entry for a task:
+Attempts to remove declared cron jobs (matched by name from `control_plane.cron_jobs`
+in the state file) and the heartbeat entry for a task:
 
 ```bash
 ltk close --state tasks/state/my-task.json
