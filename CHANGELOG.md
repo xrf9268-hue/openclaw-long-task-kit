@@ -7,6 +7,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `ltk github issue create` / `ltk github comment create` — GitHub API client with `--dry-run` mode
+- `ltk report issue` — generate Markdown issue reports from task state
+- Fake openclaw binary builder for contract testing
+- CronClient/OpenClawClient JSON shape contract tests
+- Version tags in HEARTBEAT/BOOT/AGENTS injection blocks
+- Unified diagnostics event model (DiagnosticEvent, CheckResult)
+- Configurable text sanitization for paths, tokens, URLs
+- CI security hardening (SHA-pinned actions, CodeQL, pip-audit)
+- Automated release workflow (tag-triggered GitHub Releases)
+
+### Fixed
+- Terminal status false alarm in progression stall detection
+
+### Changed
 - `ltk init` — bootstrap task state and workspace control files
 - `ltk preflight` — pre-execution validation suite
 - `ltk status` — task status with deadman, continuation, and exhaustion policies
