@@ -125,6 +125,12 @@ diagnose and report the problem.
    [GitHub issue tracker](https://github.com/xrf9268-hue/openclaw-long-task-kit/issues)
    with the gathered details and steps to reproduce.
 
+## Reference Documentation
+
+- [Cron Configuration Reference](docs/cron-reference.md) — job types, specs, environment variables, and CLI commands
+- [Heartbeat Reference](docs/heartbeat-reference.md) — config helpers, HEARTBEAT.md entries, liveness tracking, and deadman policies
+- [Security Reference](docs/security-reference.md) — state file locking, credential sanitization, control plane locks, and platform limitations
+
 ## Runtime Defaults
 
 - workspace root defaults to `~/.openclaw/workspace`
