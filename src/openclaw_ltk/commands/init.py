@@ -40,6 +40,7 @@ from openclaw_ltk.generators.workspace_bootstrap import (
     inject_boot_entry,
 )
 from openclaw_ltk.memory import append_daily_memory_note
+from openclaw_ltk.migration import CURRENT_SCHEMA_VERSION
 from openclaw_ltk.schema import ValidationResult, validate_state
 from openclaw_ltk.state import StateFile, atomic_write_text
 
@@ -70,6 +71,7 @@ def _build_state_data(
 ) -> dict[str, Any]:
     """Construct the initial state data dict (pure function, no I/O)."""
     return {
+        "schema_version": CURRENT_SCHEMA_VERSION,
         "task_id": task_id,
         "title": title,
         "created_at": now_str,

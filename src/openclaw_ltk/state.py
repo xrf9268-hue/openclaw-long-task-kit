@@ -19,6 +19,7 @@ from typing import Any
 
 from openclaw_ltk.clock import now_utc_iso
 from openclaw_ltk.errors import StateFileError
+from openclaw_ltk.migration import MigrationResult, migrate_state, needs_migration
 
 
 def atomic_write_text(path: Path, content: str) -> None:
@@ -105,6 +106,31 @@ class StateFile:
             StateFileError: if the file is missing, not valid JSON, or
                             any other OS-level error occurs.
         """
+        return self._load_unlocked()
+
+    def load_and_migrate(self) -> tuple[dict[str, Any], MigrationResult | None]:
+        """Load the state file and auto-migrate if needed.
+
+        The entire read-check-migrate-write sequence runs under a single
+        exclusive lock to prevent concurrent writers from being overwritten.
+
+        Returns:
+            A tuple of (state_dict, migration_result).
+            migration_result is None if no migration was needed.
+            If migration occurred, the file is rewritten on disk.
+        """
+        with self._exclusive_lock():
+            data = self._load_unlocked()
+            if not needs_migration(data):
+                return data, None
+
+            result = migrate_state(data)
+            if result.migrated:
+                self._save_unlocked(result.state)
+            return result.state, result
+
+    def _load_unlocked(self) -> dict[str, Any]:
+        """Read and parse the state file without acquiring a lock."""
         try:
             raw = self.path.read_text(encoding="utf-8")
         except FileNotFoundError:

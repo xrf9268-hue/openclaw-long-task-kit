@@ -23,6 +23,7 @@ from openclaw_ltk.commands.init import init_cmd  # noqa: E402
 from openclaw_ltk.commands.lock import lock_cmd  # noqa: E402
 from openclaw_ltk.commands.logs import logs_cmd  # noqa: E402
 from openclaw_ltk.commands.memory import memory_cmd  # noqa: E402
+from openclaw_ltk.commands.migrate import migrate_cmd  # noqa: E402
 from openclaw_ltk.commands.notify import notify_cmd  # noqa: E402
 from openclaw_ltk.commands.pointer import pointer_cmd  # noqa: E402
 from openclaw_ltk.commands.preflight import preflight_cmd  # noqa: E402
@@ -41,6 +42,7 @@ main.add_command(heartbeat_cmd, "heartbeat")
 main.add_command(lock_cmd, "lock")
 main.add_command(logs_cmd, "logs")
 main.add_command(memory_cmd, "memory")
+main.add_command(migrate_cmd, "migrate")
 main.add_command(notify_cmd, "notify")
 main.add_command(pointer_cmd, "pointer")
 main.add_command(report_cmd, "report")
