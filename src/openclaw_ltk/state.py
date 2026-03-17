@@ -106,6 +106,31 @@ class StateFile:
             StateFileError: if the file is missing, not valid JSON, or
                             any other OS-level error occurs.
         """
+        return self._load_unlocked()
+
+    def load_and_migrate(self) -> tuple[dict[str, Any], MigrationResult | None]:
+        """Load the state file and auto-migrate if needed.
+
+        The entire read-check-migrate-write sequence runs under a single
+        exclusive lock to prevent concurrent writers from being overwritten.
+
+        Returns:
+            A tuple of (state_dict, migration_result).
+            migration_result is None if no migration was needed.
+            If migration occurred, the file is rewritten on disk.
+        """
+        with self._exclusive_lock():
+            data = self._load_unlocked()
+            if not needs_migration(data):
+                return data, None
+
+            result = migrate_state(data)
+            if result.migrated:
+                self._save_unlocked(result.state)
+            return result.state, result
+
+    def _load_unlocked(self) -> dict[str, Any]:
+        """Read and parse the state file without acquiring a lock."""
         try:
             raw = self.path.read_text(encoding="utf-8")
         except FileNotFoundError:
@@ -131,23 +156,6 @@ class StateFile:
             ) from exc
 
         return data
-
-    def load_and_migrate(self) -> tuple[dict[str, Any], MigrationResult | None]:
-        """Load the state file and auto-migrate if needed.
-
-        Returns:
-            A tuple of (state_dict, migration_result).
-            migration_result is None if no migration was needed.
-            If migration occurred, the file is rewritten on disk.
-        """
-        data = self.load()
-        if not needs_migration(data):
-            return data, None
-
-        result = migrate_state(data)
-        if result.migrated:
-            self.save(result.state)
-        return result.state, result
 
     def save(self, data: dict[str, Any]) -> None:
         """Write *data* to the state file atomically.

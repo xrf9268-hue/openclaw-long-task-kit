@@ -62,6 +62,16 @@ class TestNeedsMigration:
         state["schema_version"] = CURRENT_SCHEMA_VERSION + 1
         assert needs_migration(state) is False
 
+    def test_non_int_schema_version_needs_migration(self) -> None:
+        state = _make_v0_state()
+        state["schema_version"] = "0"
+        assert needs_migration(state) is True
+
+    def test_null_schema_version_needs_migration(self) -> None:
+        state = _make_v0_state()
+        state["schema_version"] = None
+        assert needs_migration(state) is True
+
 
 class TestMigrateState:
     def test_v0_to_current(self) -> None:
@@ -100,6 +110,14 @@ class TestMigrateState:
         result = migrate_state(state)
         assert len(result.messages) > 0
         assert any("0" in msg and "1" in msg for msg in result.messages)
+
+    def test_non_int_schema_version_migrates_as_v0(self) -> None:
+        state = _make_v0_state()
+        state["schema_version"] = "invalid"
+        result = migrate_state(state)
+        assert result.migrated is True
+        assert result.from_version == 0
+        assert result.state["schema_version"] == CURRENT_SCHEMA_VERSION
 
 
 class TestLoadAndMigrate:

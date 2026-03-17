@@ -51,10 +51,15 @@ _MIGRATIONS: dict[int, MigrationStep] = {
 # ---------------------------------------------------------------------------
 
 
+def _resolve_version(state: dict[str, Any]) -> int:
+    """Extract the schema version, treating missing or non-int as 0."""
+    version = state.get("schema_version", 0)
+    return version if isinstance(version, int) else 0
+
+
 def needs_migration(state: dict[str, Any]) -> bool:
     """Return True if *state* needs to be migrated to the current schema."""
-    version = state.get("schema_version", 0)
-    return isinstance(version, int) and version < CURRENT_SCHEMA_VERSION
+    return _resolve_version(state) < CURRENT_SCHEMA_VERSION
 
 
 def migrate_state(state: dict[str, Any]) -> MigrationResult:
@@ -63,9 +68,7 @@ def migrate_state(state: dict[str, Any]) -> MigrationResult:
     Returns a MigrationResult. If no migration is needed, returns the
     original state dict unchanged (not copied).
     """
-    from_version: int = state.get("schema_version", 0)
-    if not isinstance(from_version, int):
-        from_version = 0
+    from_version = _resolve_version(state)
 
     if from_version >= CURRENT_SCHEMA_VERSION:
         return MigrationResult(
@@ -94,9 +97,10 @@ def migrate_state(state: dict[str, Any]) -> MigrationResult:
         messages.append(f"Migrated v{current_version} → v{target}.")
         current_version = target
 
+    actually_migrated = current_version > from_version
     return MigrationResult(
-        state=migrated,
-        migrated=True,
+        state=migrated if actually_migrated else state,
+        migrated=actually_migrated,
         from_version=from_version,
         to_version=current_version,
         messages=messages,
