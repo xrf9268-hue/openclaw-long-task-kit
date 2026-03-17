@@ -6,7 +6,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-_PREFLIGHT_KEYWORDS = ("preflight", "pre-flight", "pre flight")
+from openclaw_ltk.phases import check_transition, is_known_phase, next_phase
+
 _TERMINAL_STATUSES = frozenset({"closed", "done", "failed", "cancelled"})
 
 
@@ -20,62 +21,69 @@ class ProgressionResult:
 
 
 def check_progression_stall(state: dict[str, Any]) -> ProgressionResult:
-    """Detect post-preflight progression stalls.
+    """Detect progression stalls at any known phase boundary.
 
     A stall is detected when:
-    - ``phase`` is ``"preflight"``
-    - ``preflight_status`` is ``"passed"`` (or ``preflight.overall`` is ``"PASS"``)
+    - The task is at a known phase.
+    - The transition guard for the next phase would PASS.
+    - But the task hasn't advanced.
 
-    This means preflight succeeded but the task was never advanced to the
-    next phase, causing patrol/watchdog to repeat stale preflight reminders.
+    This generalises the original preflight-only detection to cover
+    research→spec, spec→execute, and other transitions.
     """
     phase = state.get("phase", "")
-    if phase != "preflight":
-        return ProgressionResult(
-            stalled=False,
-            reason="Phase is not 'preflight'; no stall detected.",
-            suggested_action="Continue normal execution.",
-        )
-
-    # Determine whether preflight has passed.
-    preflight_status = state.get("preflight_status", "")
-    preflight_block = state.get("preflight")
-    preflight_overall = ""
-    if isinstance(preflight_block, dict):
-        preflight_overall = str(preflight_block.get("overall", ""))
-
-    preflight_passed = preflight_status == "passed" or preflight_overall == "PASS"
+    status = str(state.get("status", "")).lower()
 
     # Terminal tasks cannot be stalled.
-    if str(state.get("status", "")).lower() in _TERMINAL_STATUSES:
+    if status in _TERMINAL_STATUSES:
         return ProgressionResult(
             stalled=False,
             reason="Task has terminal status; no stall applicable.",
             suggested_action="No action needed.",
         )
 
-    if not preflight_passed:
+    # Unknown phases — we can't evaluate stalls.
+    if not is_known_phase(phase):
         return ProgressionResult(
             stalled=False,
-            reason="Preflight has not passed yet; phase='preflight' is expected.",
-            suggested_action="Complete preflight checks.",
+            reason=f"Phase '{phase}' is not a known phase; skipping stall check.",
+            suggested_action="Continue normal execution.",
         )
 
-    # Stall detected.  Build a detailed reason.
-    next_step = str(state.get("next_step", ""))
-    next_step_stale = any(kw in next_step.lower() for kw in _PREFLIGHT_KEYWORDS)
+    # If there's no next phase (e.g., "done"), no stall possible.
+    target = next_phase(phase)
+    if target is None:
+        return ProgressionResult(
+            stalled=False,
+            reason=f"Phase '{phase}' is the final phase.",
+            suggested_action="No action needed.",
+        )
 
-    reason_parts = ["Preflight already PASS but phase is still 'preflight'."]
-    if next_step_stale:
-        reason_parts.append(f"next_step still references preflight: {next_step!r}")
+    # Check if the transition guard would allow advancing.
+    guard_result = check_transition(state, target)
 
+    if not guard_result.allowed:
+        # Guard blocks transition — task is actively working, not stalled.
+        return ProgressionResult(
+            stalled=False,
+            reason=(
+                f"Phase '{phase}' prerequisites for '{target}' "
+                f"not yet met: {guard_result.reason}"
+            ),
+            suggested_action=f"Complete '{phase}' phase requirements.",
+        )
+
+    # Guard passes but phase hasn't advanced — stall detected.
     return ProgressionResult(
         stalled=True,
-        reason=" ".join(reason_parts),
+        reason=(
+            f"Phase '{phase}' exit criteria are met but task has not "
+            f"advanced to '{target}'. "
+            f"Guard check: {guard_result.reason}"
+        ),
         suggested_action=(
-            "Update phase to the next stage (e.g. 'research' or 'spec'), "
-            "create a new work package, attach fresh evidence, "
-            "and refresh reporting timestamps."
+            f"Run 'ltk advance --state <path> --to {target}' "
+            f"to advance to the next phase."
         ),
     )
 

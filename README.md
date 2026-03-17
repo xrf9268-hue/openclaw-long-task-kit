@@ -28,6 +28,7 @@ official `openclaw` CLI instead of reimplementing the gateway/runtime.
 
 The current CLI surface matches `ltk --help`:
 
+- `advance`: check phase transition guards and advance to the next stage (`--dry-run` to preview, `--record-evidence` to log artifacts)
 - `close`: remove cron jobs and heartbeat entries for a task
 - `doctor`: run upstream doctor plus local runtime checks
 - `github issue create`: create a GitHub issue (`--dry-run` to preview)

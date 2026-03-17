@@ -100,6 +100,8 @@ _OPTIONAL_FIELDS: list[str] = [
     "active_task_pointer",
     "preflight",
     "child_execution",
+    "phase_evidence",
+    "phase_transitions",
 ]
 
 

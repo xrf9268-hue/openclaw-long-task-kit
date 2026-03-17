@@ -195,3 +195,81 @@ class TestProgressionNoStall:
             }
             result = check_progression_stall(state)
             assert result.stalled is False, f"status={status} should not stall"
+
+
+# ---------------------------------------------------------------------------
+# generalised stall detection (issues #8-#12)
+# ---------------------------------------------------------------------------
+
+
+class TestGeneralisedStallDetection:
+    def test_research_done_but_phase_not_advanced(self) -> None:
+        """Issue #12: research evidence exists but phase is still 'research'."""
+        state: dict[str, Any] = {
+            "phase": "research",
+            "status": "active",
+            "phase_evidence": {
+                "research": {
+                    "artifacts": ["notes.md"],
+                    "completed_at": "2026-01-01T00:00:00",
+                },
+            },
+        }
+        result = check_progression_stall(state)
+        assert result.stalled is True
+        assert "research" in result.reason.lower()
+
+    def test_spec_done_but_phase_not_advanced(self) -> None:
+        state: dict[str, Any] = {
+            "phase": "spec",
+            "status": "active",
+            "phase_evidence": {
+                "spec": {
+                    "artifacts": ["spec.md"],
+                    "completed_at": "2026-01-01T00:00:00",
+                },
+            },
+        }
+        result = check_progression_stall(state)
+        assert result.stalled is True
+
+    def test_no_evidence_no_stall(self) -> None:
+        state: dict[str, Any] = {"phase": "research", "status": "active"}
+        result = check_progression_stall(state)
+        assert result.stalled is False
+
+    def test_execute_no_stall_without_evidence(self) -> None:
+        state: dict[str, Any] = {"phase": "execute", "status": "active"}
+        result = check_progression_stall(state)
+        assert result.stalled is False
+
+    def test_done_phase_no_stall(self) -> None:
+        state: dict[str, Any] = {"phase": "done", "status": "done"}
+        result = check_progression_stall(state)
+        assert result.stalled is False
+
+    def test_terminal_status_with_evidence_no_stall(self) -> None:
+        state: dict[str, Any] = {
+            "phase": "research",
+            "status": "cancelled",
+            "phase_evidence": {
+                "research": {"artifacts": ["x"], "completed_at": "2026-01-01"},
+            },
+        }
+        result = check_progression_stall(state)
+        assert result.stalled is False
+
+    def test_unknown_phase_no_stall(self) -> None:
+        state: dict[str, Any] = {"phase": "custom-thing", "status": "active"}
+        result = check_progression_stall(state)
+        assert result.stalled is False
+
+    def test_suggested_action_mentions_advance(self) -> None:
+        state: dict[str, Any] = {
+            "phase": "preflight",
+            "status": "active",
+            "preflight_status": "passed",
+        }
+        result = check_progression_stall(state)
+        assert result.stalled is True
+        assert "advance" in result.suggested_action.lower()
