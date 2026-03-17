@@ -283,3 +283,82 @@ class TestInjectBootEntry:
         assert text.count("Recovery: task-1") == 1
         assert "/tmp/two.json" in text
         assert "# Boot Notes" in text
+
+
+# ---------------------------------------------------------------------------
+# Version tags in injection blocks (Issue #27)
+# ---------------------------------------------------------------------------
+
+
+class TestVersionTagHeartbeat:
+    def test_entry_contains_version(self) -> None:
+        entry = generate_entry(
+            task_id="t1",
+            title="T",
+            status="active",
+            goal="G",
+            updated_at="2026-01-01",
+        )
+        assert "version=0.1.0" in entry
+
+    def test_inject_replaces_old_block_without_version(self, tmp_path: Path) -> None:
+        """Old blocks (no version tag) must be matched and replaced."""
+        hb = tmp_path / "HEARTBEAT.md"
+        old_block = (
+            "## LTK: t1\n"
+            "<!-- ltk:meta task_id=t1 status=active -->\n"
+            "- **Task**: T\n"
+            "<!-- ltk:end -->"
+        )
+        hb.write_text(old_block + "\n", encoding="utf-8")
+        inject_heartbeat_entry(hb, "t1", "T", "done", "G", "2026-01-02")
+        text = hb.read_text(encoding="utf-8")
+        assert text.count("## LTK: t1") == 1
+        assert "version=0.1.0" in text
+        assert "done" in text
+
+
+class TestVersionTagBoot:
+    def test_boot_block_contains_version(self, tmp_path: Path) -> None:
+        boot = tmp_path / "BOOT.md"
+        inject_boot_entry(
+            boot,
+            task_id="t1",
+            title="T",
+            goal="G",
+            state_path="/s.json",
+        )
+        text = boot.read_text(encoding="utf-8")
+        assert "version=0.1.0" in text
+
+    def test_replaces_old_block_without_version(self, tmp_path: Path) -> None:
+        boot = tmp_path / "BOOT.md"
+        old_block = "<!-- ltk:boot task_id=t1 -->\nbody\n<!-- ltk:boot:end -->"
+        boot.write_text(old_block + "\n", encoding="utf-8")
+        inject_boot_entry(
+            boot,
+            task_id="t1",
+            title="T",
+            goal="G",
+            state_path="/s.json",
+        )
+        text = boot.read_text(encoding="utf-8")
+        assert text.count("ltk:boot task_id=t1") == 1
+        assert "version=0.1.0" in text
+
+
+class TestVersionTagAgents:
+    def test_agents_block_contains_version(self, tmp_path: Path) -> None:
+        agents = tmp_path / "AGENTS.md"
+        inject_agents_directive(agents, "t1", "/s.json")
+        text = agents.read_text(encoding="utf-8")
+        assert "version=0.1.0" in text
+
+    def test_replaces_old_block_without_version(self, tmp_path: Path) -> None:
+        agents = tmp_path / "AGENTS.md"
+        old_block = "<!-- ltk:agents task_id=t1 -->\nbody\n<!-- ltk:agents:end -->"
+        agents.write_text(old_block + "\n", encoding="utf-8")
+        inject_agents_directive(agents, "t1", "/s.json")
+        text = agents.read_text(encoding="utf-8")
+        assert text.count("ltk:agents task_id=t1") == 1
+        assert "version=0.1.0" in text
