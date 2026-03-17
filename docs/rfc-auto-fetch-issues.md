@@ -35,7 +35,9 @@ ltk issue-loop --repo owner/repo [--dry-run] [--max-issues N]
 **Phases:**
 
 1. **Fetch** — `GET /repos/{owner}/{repo}/issues` filtered by labels,
-   milestone, and state.  Exclude issues that already have an open PR branch.
+   milestone, and state.  Drop items that have a `pull_request` field (the
+   GitHub Issues API returns PRs as well).  Exclude issues that already have
+   an open PR branch.
 2. **Triage** — Sort by milestone priority (M0 > M1 > M2 > M3), then by size
    label (S > M > L).  Issues without size labels are skipped unless
    `--include-unsized` is passed.
