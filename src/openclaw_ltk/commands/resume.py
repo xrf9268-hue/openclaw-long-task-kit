@@ -27,6 +27,10 @@ from openclaw_ltk.policies.exhaustion import (
     evaluate_exhaustion,
     format_exhaustion_summary,
 )
+from openclaw_ltk.policies.progression import (
+    check_progression_stall,
+    format_progression_summary,
+)
 from openclaw_ltk.state import StateFile, atomic_write_text
 
 from .preflight import print_preflight_results, run_preflight_checks
@@ -119,3 +123,7 @@ def resume_cmd(state_path: str) -> None:
     click.echo(f"\n{format_continuation_summary(decision)}")
     if exhaustion.action != "continue":
         click.echo(f"\n{format_exhaustion_summary(exhaustion)}")
+
+    progression = check_progression_stall(state)
+    if progression.stalled:
+        click.echo(f"\nWARNING: {format_progression_summary(progression)}")

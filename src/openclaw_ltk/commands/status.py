@@ -9,6 +9,7 @@ import click
 from openclaw_ltk.clock import minutes_since
 from openclaw_ltk.config import LtkConfig
 from openclaw_ltk.errors import LtkError
+from openclaw_ltk.phases import check_transition, is_known_phase, next_phase
 from openclaw_ltk.policies.continuation import (
     format_continuation_summary,
     should_continue,
@@ -90,3 +91,9 @@ def status_cmd(state_path: str, brief: bool) -> None:
     n_warn = len(validation.warnings)
     click.echo(f"Validation: {val_label} ({n_err} errors, {n_warn} warnings)")
     click.echo(format_progression_summary(progression))
+    if is_known_phase(phase):
+        target = next_phase(phase)
+        if target is not None:
+            gate = check_transition(data, target)
+            gate_label = "OPEN" if gate.allowed else "CLOSED"
+            click.echo(f"Phase Gate ({phase} → {target}): {gate_label} — {gate.reason}")

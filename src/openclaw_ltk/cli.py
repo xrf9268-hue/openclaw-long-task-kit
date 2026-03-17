@@ -15,6 +15,7 @@ def main() -> None:
 
 
 # Import and register command groups.
+from openclaw_ltk.commands.advance import advance_cmd  # noqa: E402
 from openclaw_ltk.commands.close import close_cmd  # noqa: E402
 from openclaw_ltk.commands.doctor import doctor_cmd  # noqa: E402
 from openclaw_ltk.commands.github import github_cmd  # noqa: E402
@@ -33,6 +34,7 @@ from openclaw_ltk.commands.status import status_cmd  # noqa: E402
 from openclaw_ltk.commands.watchdog import watchdog_cmd  # noqa: E402
 from openclaw_ltk.commands.webhooks import webhooks_cmd  # noqa: E402
 
+main.add_command(advance_cmd, "advance")
 main.add_command(init_cmd, "init")
 main.add_command(preflight_cmd, "preflight")
 main.add_command(close_cmd, "close")
