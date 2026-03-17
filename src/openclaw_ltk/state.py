@@ -19,6 +19,7 @@ from typing import Any
 
 from openclaw_ltk.clock import now_utc_iso
 from openclaw_ltk.errors import StateFileError
+from openclaw_ltk.migration import MigrationResult, migrate_state, needs_migration
 
 
 def atomic_write_text(path: Path, content: str) -> None:
@@ -130,6 +131,23 @@ class StateFile:
             ) from exc
 
         return data
+
+    def load_and_migrate(self) -> tuple[dict[str, Any], MigrationResult | None]:
+        """Load the state file and auto-migrate if needed.
+
+        Returns:
+            A tuple of (state_dict, migration_result).
+            migration_result is None if no migration was needed.
+            If migration occurred, the file is rewritten on disk.
+        """
+        data = self.load()
+        if not needs_migration(data):
+            return data, None
+
+        result = migrate_state(data)
+        if result.migrated:
+            self.save(result.state)
+        return result.state, result
 
     def save(self, data: dict[str, Any]) -> None:
         """Write *data* to the state file atomically.

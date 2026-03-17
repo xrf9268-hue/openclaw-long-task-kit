@@ -62,6 +62,7 @@ class TestInitSkipCron:
         assert "goal" in data
         assert data["status"] == "launching"
         assert "control_plane" in data
+        assert data.get("schema_version") == 1
 
     def test_writes_boot_agents_and_pointer(self, tmp_path: Path) -> None:
         runner = CliRunner()

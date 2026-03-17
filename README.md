@@ -37,6 +37,7 @@ The current CLI surface matches `ltk --help`:
 - `lock`: acquire, renew, or release the task control lock
 - `logs`: tail upstream gateway logs and record wrapper diagnostics
 - `memory`: append manual notes or list daily memory files
+- `migrate`: upgrade a state file to the current schema version (`--dry-run` to preview)
 - `notify`: render wrapper-level task summaries or Telegram preview payloads
 - `pointer`: manage the active task pointer JSON file
 - `preflight`: validate state, files, approvals, cron coverage, and gateway health
