@@ -22,8 +22,17 @@ jobs:
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           PKG_VERSION=$(uv run python -c "from openclaw_ltk import __version__; print(__version__)")
+          TOML_VERSION=$(uv run python -c "
+          import tomllib
+          with open('pyproject.toml', 'rb') as f:
+              print(tomllib.load(f)['project']['version'])
+          ")
           if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
-            echo "::error::Tag version ($TAG_VERSION) does not match package version ($PKG_VERSION)"
+            echo "::error::Tag version ($TAG_VERSION) does not match __version__ ($PKG_VERSION)"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$TOML_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match pyproject.toml version ($TOML_VERSION)"
             exit 1
           fi
 
