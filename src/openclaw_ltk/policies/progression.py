@@ -10,6 +10,10 @@ from openclaw_ltk.phases import check_transition, is_known_phase, next_phase
 
 _TERMINAL_STATUSES = frozenset({"closed", "done", "failed", "cancelled"})
 
+# Phases whose next-phase guard is always-allow — stalling here is normal
+# because the transition is trivial and operator/agent will advance shortly.
+_TRANSIENT_PHASES = frozenset({"launch", "review"})
+
 
 @dataclass
 class ProgressionResult:
@@ -31,7 +35,8 @@ def check_progression_stall(state: dict[str, Any]) -> ProgressionResult:
     This generalises the original preflight-only detection to cover
     research→spec, spec→execute, and other transitions.
     """
-    phase = state.get("phase", "")
+    raw_phase = state.get("phase", "")
+    phase = str(raw_phase) if isinstance(raw_phase, str) else ""
     status = str(state.get("status", "")).lower()
 
     # Terminal tasks cannot be stalled.
@@ -42,8 +47,8 @@ def check_progression_stall(state: dict[str, Any]) -> ProgressionResult:
             suggested_action="No action needed.",
         )
 
-    # Unknown phases — we can't evaluate stalls.
-    if not is_known_phase(phase):
+    # Unknown or non-string phases — we can't evaluate stalls.
+    if not phase or not is_known_phase(phase):
         return ProgressionResult(
             stalled=False,
             reason=f"Phase '{phase}' is not a known phase; skipping stall check.",
@@ -57,6 +62,15 @@ def check_progression_stall(state: dict[str, Any]) -> ProgressionResult:
             stalled=False,
             reason=f"Phase '{phase}' is the final phase.",
             suggested_action="No action needed.",
+        )
+
+    # Transient phases (launch, review) have always-allow guards, so
+    # being in them is normal and not a stall.
+    if phase in _TRANSIENT_PHASES:
+        return ProgressionResult(
+            stalled=False,
+            reason=f"Phase '{phase}' is transient; not a stall.",
+            suggested_action=f"Advance to '{target}' when ready.",
         )
 
     # Check if the transition guard would allow advancing.

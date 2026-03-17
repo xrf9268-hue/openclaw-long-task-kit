@@ -273,3 +273,26 @@ class TestGeneralisedStallDetection:
         result = check_progression_stall(state)
         assert result.stalled is True
         assert "advance" in result.suggested_action.lower()
+
+    def test_non_string_phase_no_crash(self) -> None:
+        """P1: non-string phase should not crash."""
+        state: dict[str, Any] = {"phase": ["bad"], "status": "active"}
+        result = check_progression_stall(state)
+        assert result.stalled is False
+
+    def test_dict_phase_no_crash(self) -> None:
+        state: dict[str, Any] = {"phase": {"x": 1}, "status": "active"}
+        result = check_progression_stall(state)
+        assert result.stalled is False
+
+    def test_launch_phase_not_stalled(self) -> None:
+        """P2: launch has always-allow guard, should not be flagged."""
+        state: dict[str, Any] = {"phase": "launch", "status": "active"}
+        result = check_progression_stall(state)
+        assert result.stalled is False
+
+    def test_review_phase_not_stalled(self) -> None:
+        """P2: review has always-allow guard, should not be flagged."""
+        state: dict[str, Any] = {"phase": "review", "status": "active"}
+        result = check_progression_stall(state)
+        assert result.stalled is False

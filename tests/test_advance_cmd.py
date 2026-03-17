@@ -167,6 +167,30 @@ class TestRecordEvidence:
         reloaded = json.loads(state_file.read_text(encoding="utf-8"))
         assert reloaded["phase"] == "spec"
 
+    def test_record_evidence_dry_run_no_write(self, tmp_path: Path) -> None:
+        state_file = _write_state(
+            tmp_path,
+            _base_state(phase="research", preflight_status="passed"),
+        )
+        runner = CliRunner()
+        result = runner.invoke(
+            main,
+            [
+                "advance",
+                "--state",
+                str(state_file),
+                "--record-evidence",
+                "research",
+                "--artifact",
+                "notes.md",
+                "--dry-run",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "dry-run" in result.output.lower()
+        reloaded = json.loads(state_file.read_text(encoding="utf-8"))
+        assert "phase_evidence" not in reloaded
+
     def test_record_evidence_without_artifact_errors(self, tmp_path: Path) -> None:
         state_file = _write_state(tmp_path, _base_state(phase="research"))
         runner = CliRunner()

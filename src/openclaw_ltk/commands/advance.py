@@ -49,6 +49,12 @@ def advance_cmd(
                 err=True,
             )
             sys.exit(2)
+        if dry_run:
+            click.echo(
+                f"DRY-RUN: would record evidence for '{evidence_phase}': "
+                f"{', '.join(artifacts)}"
+            )
+            return
         try:
             with sf.locked_update() as data:
                 evidence = data.setdefault("phase_evidence", {})
