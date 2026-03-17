@@ -101,6 +101,40 @@ class TestFakeOpenClawBuild:
         data = json.loads(result.stdout)
         assert "service" in data
 
+    def test_json_with_apostrophe(self, tmp_path: Path) -> None:
+        """P1: JSON containing apostrophes must not break bash quoting."""
+        fake = FakeOpenClaw(tmp_path / "openclaw")
+        fake.register("health --json", {"msg": "it's down", "ok": False})
+        fake.build()
+        result = subprocess.run(
+            [str(fake.path), "health", "--json"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert data["msg"] == "it's down"
+
+    def test_custom_route_overrides_wildcard_default(self, tmp_path: Path) -> None:
+        """P2: Specific custom route must take priority over default wildcard."""
+        fake = FakeOpenClaw(tmp_path / "openclaw")
+        fake.register(
+            "cron remove job-1 --json",
+            {"error": "not found"},
+            exit_code=1,
+        )
+        fake.build()
+        result = subprocess.run(
+            [str(fake.path), "cron", "remove", "job-1", "--json"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 1
+        data = json.loads(result.stdout)
+        assert data["error"] == "not found"
+
 
 class TestFakeOpenClawIntegration:
     """Use the fake binary with real CronClient/OpenClawClient."""

@@ -76,13 +76,21 @@ class FakeOpenClaw:
         Returns the path to the script.
         """
         cases: list[str] = []
-        for key, (response, rc) in self._routes.items():
+        # Sort routes: longer (more specific) keys first so they match
+        # before shorter wildcard patterns in the bash case statement.
+        sorted_routes = sorted(
+            self._routes.items(), key=lambda kv: len(kv[0]), reverse=True
+        )
+        for key, (response, rc) in sorted_routes:
             if response is None:
                 stdout_line = ""
             elif isinstance(response, str):
                 stdout_line = f"echo {json.dumps(response)}"
             else:
-                stdout_line = f"echo '{json.dumps(response)}'"
+                # Use heredoc to avoid single-quote escaping issues
+                # (e.g. JSON containing apostrophes).
+                encoded = json.dumps(response)
+                stdout_line = f"cat <<'FAKEJSON'\n{encoded}\nFAKEJSON"
             pattern = self._key_to_pattern(key)
             cases.append(f"  {pattern})\n    {stdout_line}\n    exit {rc}\n    ;;")
 
